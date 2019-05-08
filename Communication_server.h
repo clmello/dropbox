@@ -1,5 +1,6 @@
 #ifndef COMMUNICATION_SERVER_H
 #define COMMUNICATION_SERVER_H
+#include "connected_client.h"
 #include "stdint.h"
 #include <iostream>
 #include <fstream>
@@ -11,6 +12,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <vector>
 
 
 class Communication_server
@@ -30,11 +32,14 @@ class Communication_server
 
 	private:
 		int port;
-		char buffer[8000];
-		pthread_t th_conexoes, th_comandos;
+		int header_size;
+		char buffer[1024];
+		vector<pthread_t> client_threads;
+		vector<Connected_client> connected_clients;
 		
 		void *accept_connections();
 		void *receive_commands(int newsockfd);
+		void receive_username(int sockfd);
 
 
 

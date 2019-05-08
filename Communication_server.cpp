@@ -4,9 +4,10 @@ using namespace std;
 
 Communication_server::Communication_server(int port)
 {
-    this->port = port;
-		cout << "\nchamando aceita_conexoes\n";
-		accept_connections();
+	this->port = port;
+	this->header_size = 10;
+	cout << "\nchamando aceita_conexoes\n";
+	accept_connections();
 }
 
 void *Communication_server::accept_connections()
@@ -42,33 +43,66 @@ void *Communication_server::accept_connections()
         struct th_args args;
         args.obj = this;
         args.newsockfd = &newsockfd;
-        pthread_create(&th_comandos, NULL, receive_commands_helper, &args);
-        pthread_join(th_comandos,NULL);
+		
+		receive_username(newsockfd);
+		/*pthread_t client_thread;
+		//Connected_client new_client();
+
+        pthread_create(&client_thread, NULL, receive_commands_helper, &args);
+        pthread_join(client_thread,NULL);*/
     //}
 
+}
+
+void Communication_server::receive_username(int sockfd)
+{
+	int bytes_lidos=0;
+    bzero(buffer, 256+10);
+	cout << "\nbytes lidos: "<<bytes_lidos<<endl;
+		packet* pacote_recebido = (packet*)buffer;
+    while(bytes_lidos<256+10) // TODO: ENQUANTO USUARIO NÃO FECHA
+    {
+        cout << "\n\nsockfd = " << sockfd << "\n\n";
+        /* read from the socket */
+        int n = read(sockfd, buffer, 256);
+        if (n < 0)
+            printf("ERROR reading from socket");
+            
+        bytes_lidos+=n;
+		cout << "\nbytes lidos: "<<bytes_lidos<<endl;
+		
+		
+		cout << "\n\npacote recebido: \ntipo: " << pacote_recebido->type;
+		cout << "\nseqn: " << pacote_recebido->seqn;
+		cout << "\ntotal_size: " << pacote_recebido->total_size;
+		cout << "\nlength: " << pacote_recebido->length;
+		cout << "\npayload: " << pacote_recebido->_payload <<endl <<endl;
+		cout << "\n!!";
+	}
+	cout << "\npayload: " << pacote_recebido->_payload <<endl <<endl;
 }
 
 void *Communication_server::receive_commands(int newsockfd)
 {
 	int bytes_lidos=0;
-    bzero(buffer, 256);
+    bzero(buffer, 256+header_size);
 	cout << "\nbytes lidos: "<<bytes_lidos<<endl;
     while(bytes_lidos<80) // TODO: ENQUANTO USUARIO NÃO FECHA
     {
         cout << "\n\nnewsockfd = " << newsockfd << "\n\n";
         /* read from the socket */
-        int n = read(newsockfd, buffer, 256);
+        int n = read(newsockfd, buffer, 256+header_size-bytes_lidos);
         if (n < 0)
             printf("ERROR reading from socket");
         printf("Here is the message: %s\n", buffer);
         bytes_lidos+=n;
-	cout << "\nbytes lidos: "<<bytes_lidos<<endl;
-	packet* pacote_recebido = (packet*)buffer;
-	cout << "\n\npacote recebido: \ntipo: " << pacote_recebido->type;
-	cout << "\nseqn: " << pacote_recebido->seqn;
-	cout << "\ntotal_size: " << pacote_recebido->total_size;
-	cout << "\nlength: " << pacote_recebido->length;
-	cout << "\npayload: " << pacote_recebido->_payload <<endl <<endl;
+		cout << "\nbytes lidos: "<<bytes_lidos<<endl;
+		packet* pacote_recebido = (packet*)buffer;
+		cout << "\n\npacote recebido: \ntipo: " << pacote_recebido->type;
+		cout << "\nseqn: " << pacote_recebido->seqn;
+		cout << "\ntotal_size: " << pacote_recebido->total_size;
+		cout << "\nlength: " << pacote_recebido->length;
+		cout << "\npayload: " << pacote_recebido->_payload <<endl <<endl;
 	}
 	//packet* pacote_recebido = (packet*)buffer;
 }

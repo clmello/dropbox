@@ -44,11 +44,12 @@ void *Communication_server::accept_connections()
         args.obj = this;
         args.newsockfd = &newsockfd;
 		
-		pthread_t client_thread;
+		receive_username(newsockfd);
+		/*pthread_t client_thread;
 		//Connected_client new_client();
 
         pthread_create(&client_thread, NULL, receive_commands_helper, &args);
-        pthread_join(client_thread,NULL);
+        pthread_join(client_thread,NULL);*/
     //}
 
 }
@@ -58,7 +59,8 @@ void Communication_server::receive_username(int sockfd)
 	int bytes_lidos=0;
     bzero(buffer, 256+10);
 	cout << "\nbytes lidos: "<<bytes_lidos<<endl;
-    while(bytes_lidos<80) // TODO: ENQUANTO USUARIO NÃO FECHA
+		packet* pacote_recebido = (packet*)buffer;
+    while(bytes_lidos<256+10) // TODO: ENQUANTO USUARIO NÃO FECHA
     {
         cout << "\n\nsockfd = " << sockfd << "\n\n";
         /* read from the socket */
@@ -69,14 +71,15 @@ void Communication_server::receive_username(int sockfd)
         bytes_lidos+=n;
 		cout << "\nbytes lidos: "<<bytes_lidos<<endl;
 		
-		packet* pacote_recebido = (packet*)buffer;
 		
 		cout << "\n\npacote recebido: \ntipo: " << pacote_recebido->type;
 		cout << "\nseqn: " << pacote_recebido->seqn;
 		cout << "\ntotal_size: " << pacote_recebido->total_size;
 		cout << "\nlength: " << pacote_recebido->length;
 		cout << "\npayload: " << pacote_recebido->_payload <<endl <<endl;
+		cout << "\n!!";
 	}
+	cout << "\npayload: " << pacote_recebido->_payload <<endl <<endl;
 }
 
 void *Communication_server::receive_commands(int newsockfd)

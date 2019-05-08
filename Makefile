@@ -1,8 +1,10 @@
 CC = g++
-FLAGS = -g -Wall -pthread -std=c++11
+FLAGS = -g -pthread -std=c++11
 CFLAGS = $(FLAGS) $(INCLUDE)
 
-UTILS = Comunicacao.o \
+UTILS_SERVER = Communication_server.o \
+
+UTILS_CLIENT = Communication_client.o \
 
 CLIENT_O = client.o
 
@@ -12,10 +14,10 @@ SERVER_O = server.o
 
 all: dropboxserver dropboxclient
 
-dropboxserver: $(UTILS) $(SERVER_O)
+dropboxserver: $(UTILS_SERVER) $(SERVER_O)
 	$(CC) $(CFLAGS) -o $@ $^
 
-dropboxclient: $(UTILS) $(CLIENT_O)
+dropboxclient: $(UTILS_CLIENT) $(CLIENT_O)
 	$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.cpp

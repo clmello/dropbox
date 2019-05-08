@@ -1,17 +1,32 @@
 #include "client.h"
+#include "Communication_client.h"
 
 #include <iostream>
 #include <stdlib.h>
 #include <sys/stat.h>
+/* #include <boost/filesystem.hpp>
+using namespace boost::filesystem;
 
-Client::Client(std::string username){
+g++ -o client client.cpp -lboost_system -> comando para boost funcionar */
+
+Client::Client(std::string username, std::string hostname, int port){
     this->username = username;
+	this->hostname = hostname;
+	this->port = port;
     this->isLogged = false;
     this->dir = " ";
 }
 
 std::string Client::getUsername() {
     return this->username;
+}
+
+std::string Client::getHostname() {
+	return this->hostname;
+}
+
+int Client::getPort() {
+	return this->port;
 }
 
 void Client::setIsLogged(bool isLogged) {
@@ -102,11 +117,13 @@ int main(int argc, char **argv) {
    	std::string host = argv[2];
    	int port = atoi(argv[3]); // de repente pode ser um uint16?
 
-	Client client = Client(username);
+	Client client = Client(username, host, port);
 
 	/*** CONEXÃO COM O SERVIDOR ***/
-	
-    // algo tipo: client.connect();
+
+	//// TA DANDO ERRO MAS NAO SEI
+    Communication_client communication_client;
+	bool connected = communication_client.connect_client_server(client);
 
 	/*** SINCRONIZAÇÃO COM O SERVIDOR ***/
     // Aqui verifica se já existe o diretório, se não existe então cria

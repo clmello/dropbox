@@ -1,19 +1,24 @@
-#include "communication_client.h"
+#ifndef CLIENT_H
+#define CLIENT_H
 
 #include <string>
 
 class Client {
 private:
     std::string username; // userId
-    bool isLogged;
+	std::string hostname;	
+	int port;    
+	bool isLogged;
     std::string dir;
 
 public:
-    Client(std::string username);
+    Client(std::string username, std::string hostname, int port);
 
     // gets e sets
     void setUsername(std::string username);
     std::string getUsername();
+	std::string getHostname();	
+	int getPort();
     void setIsLogged(bool isLogged);
     bool getIsLogged();
     void setDir(std::string dir);
@@ -23,3 +28,4 @@ public:
     void userInterface();
 };
 
+#endif // COMMUNICATION_CLIENT_H

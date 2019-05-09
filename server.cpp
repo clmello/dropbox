@@ -5,9 +5,40 @@
 
 using namespace std;
 
+void print_bytes(const void *object, size_t size)
+{
+  // This is for C++; in C just drop the static_cast<>() and assign.
+  const unsigned char * const bytes = static_cast<const unsigned char *>(object);
+  size_t i;
+
+  printf("[ ");
+  for(i = 0; i < size; i++)
+  {
+    printf("%02x ", bytes[i]);
+  }
+  printf("]\n");
+}
 int main()
 {
-	cout << sizeof("teste")<<"\nteste\n";
+	/*char buffer[10];
+	
+	struct packet pkt;
+	pkt.type = 10;
+	pkt.seqn = 3;
+	pkt.total_size = 340;
+	pkt. length = 6;
+	memcpy(pkt._payload, "teste", sizeof("teste"));
+	
+	
+	memcpy(&buffer, &pkt, 10);
+	print_bytes(&buffer, sizeof(buffer));
+	
+	uint16_t _payload_size;
+	memcpy(&_payload_size, &buffer[8], 2);
+	print_bytes(&_payload_size, sizeof(_payload_size));
+	cout << "\npayload_size: " << _payload_size << endl;
+	//cout << "\nsizeof(*pkt._payload) == " << sizeof(*pkt._payload) << endl;
+	//cout << sizeof("teste")<<"\nteste\n";*/
 	Communication_server com(4002);
 	return 0;
 }

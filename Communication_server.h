@@ -14,17 +14,18 @@
 #include <pthread.h>
 #include <vector>
 
+typedef	struct	packet{
+	uint16_t	type;		//Tipo do pacote (p.ex. DATA | CMD)
+	uint16_t	seqn;		//Número de sequência
+	uint32_t	total_size;		//Número total de fragmentos
+	uint16_t	length;	//Comprimento do payload
+	char		_payload[512];				//Dados do pacote
+}	packet;	
+
 
 class Communication_server
 {
 	public:
-		typedef	struct	packet{
-			uint16_t	type;		//Tipo do pacote (p.ex. DATA | CMD)
-			uint16_t	seqn;		//Número de sequência
-			uint32_t	total_size;		//Número total de fragmentos
-			uint16_t	length;	//Comprimento do payload
-			const	char*	_payload;				//Dados do pacote
-		}	packet;	
 		Communication_server(int port);
 		void test();
 
@@ -33,13 +34,16 @@ class Communication_server
 	private:
 		int port;
 		int header_size;
-		char buffer[1024];
+		int max_payload;
+		char buffer[512];
+//		char output[512];
 		vector<pthread_t> client_threads;
 		vector<Connected_client> connected_clients;
 		
 		void *accept_connections();
 		void *receive_commands(int newsockfd);
-		void receive_username(int sockfd);
+		packet* receive_payload(int sockfd);
+		packet* receive_header(int sockfd);	// Receives the header of the packet from the client and returns a packet struct containing the header
 
 
 

@@ -6,6 +6,7 @@ Communication_server::Communication_server(int port)
 {
 	this->port = port;
 	this->header_size = 10;
+	this->max_payload = 502;
 	cout << "\nchamando aceita_conexoes\n";
 	accept_connections();
 }
@@ -44,7 +45,7 @@ void *Communication_server::accept_connections()
         args.obj = this;
         args.newsockfd = &newsockfd;
 		
-		receive_username(newsockfd);
+		receive_payload(newsockfd);
 		/*pthread_t client_thread;
 		//Connected_client new_client();
 
@@ -54,32 +55,53 @@ void *Communication_server::accept_connections()
 
 }
 
-void Communication_server::receive_username(int sockfd)
+packet* Communication_server::receive_header(int sockfd)
 {
-	int bytes_lidos=0;
-    bzero(buffer, 256+10);
-	cout << "\nbytes lidos: "<<bytes_lidos<<endl;
-		packet* pacote_recebido = (packet*)buffer;
-    while(bytes_lidos<256+10) // TODO: ENQUANTO USUARIO NÃO FECHA
+	int bytes_received=0;
+    bzero(buffer, header_size);
+	cout << "\nbytes lidos: "<<bytes_received<<endl;
+    while(bytes_received < header_size)
     {
         cout << "\n\nsockfd = " << sockfd << "\n\n";
         /* read from the socket */
-        int n = read(sockfd, buffer, 256);
+        int n = read(sockfd, buffer, header_size);
         if (n < 0)
             printf("ERROR reading from socket");
             
-        bytes_lidos+=n;
-		cout << "\nbytes lidos: "<<bytes_lidos<<endl;
-		
-		
-		cout << "\n\npacote recebido: \ntipo: " << pacote_recebido->type;
-		cout << "\nseqn: " << pacote_recebido->seqn;
-		cout << "\ntotal_size: " << pacote_recebido->total_size;
-		cout << "\nlength: " << pacote_recebido->length;
-		cout << "\npayload: " << pacote_recebido->_payload <<endl <<endl;
-		cout << "\n!!";
+        bytes_received+=n;
+		cout << "\nbytes lidos: "<<bytes_received<<endl;
 	}
-	cout << "\npayload: " << pacote_recebido->_payload <<endl <<endl;
+	// Bytes from buffer[4] to buffer[7] are the size of _payload
+	struct packet* header;
+	header = (packet*) malloc( sizeof(packet) );
+	memcpy(&header->type, &buffer, 2);
+	memcpy(&header->seqn, &buffer[2], 2);
+	memcpy(&header->total_size, &buffer[4], 4);
+	memcpy(&header->length, &buffer[8], 2);
+	cout << "\n\npayload_size: " << header->length << endl << endl;
+	
+	return header;
+}
+
+packet* Communication_server::receive_payload(int sockfd)
+{
+    struct packet *pkt = receive_header(sockfd);
+	int bytes_received=0;
+    bzero(buffer, pkt->length);
+    while(bytes_received < pkt->length)
+    {
+        // read from the socket
+        int n = read(sockfd, buffer, pkt->length-bytes_received);
+        if (n < 0)
+            printf("ERROR reading from socket");
+            
+        bytes_received+=n;
+		cout << "\nbytes lidos: "<<bytes_received<<endl;
+	}
+	memcpy(&pkt->_payload, &buffer, sizeof(buffer));
+	cout << "\npayload: " << pkt->_payload << endl;
+	
+	return pkt;
 }
 
 void *Communication_server::receive_commands(int newsockfd)

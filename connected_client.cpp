@@ -8,6 +8,8 @@ Connected_client::Connected_client(pthread_t thread, string username, int sockfd
 	this->num_connections = 1;
 }
 
+string Connected_client::get_username() {return username;}
+
 int Connected_client::get_sockfd() {return sockfd;}
 
 int Connected_client::get_num_connections() {return num_connections;}

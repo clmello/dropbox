@@ -55,8 +55,8 @@ void *Communication_server::accept_connections()
 		// Create client folder, if it doesn't already exist
 		create_folder("/home/"+connected_clients[connected_clients.size()-1].get_username()+"_syncdir");
 
-        //pthread_create(&client_thread, NULL, receive_commands_helper, &args);
-        //pthread_join(client_thread,NULL);
+        pthread_create(&client_thread, NULL, receive_commands_helper, &args);
+        pthread_join(client_thread,NULL);
     //}
 
 }
@@ -84,6 +84,9 @@ packet* Communication_server::receive_header(int sockfd)
 	memcpy(&header->seqn, &buffer[2], 2);
 	memcpy(&header->total_size, &buffer[4], 4);
 	memcpy(&header->length, &buffer[8], 2);
+	cout << "\n\ntype: " << header->type << endl;
+	cout << "\n\nseqn: " << header->seqn << endl;
+	cout << "\n\ntotal_size: " << header->total_size << endl;
 	cout << "\n\npayload_size: " << header->length << endl << endl;
 	
 	return header;
@@ -104,18 +107,30 @@ packet* Communication_server::receive_payload(int sockfd)
         bytes_received+=n;
 		cout << "\nbytes lidos: "<<bytes_received<<endl;
 	}
-	memcpy(&pkt->_payload, &buffer, sizeof(buffer));
+	memcpy(&pkt->_payload, &buffer, pkt->length);
+	//int i;
+	//memcpy(&i, &buffer, pkt->length);
+	//cout << "\npayload: " << i << endl;
 	cout << "\npayload: " << pkt->_payload << endl;
 	
 	return pkt;
 }
 
-void *Communication_server::receive_commands(int newsockfd)
+void *Communication_server::receive_commands(int sockfd)
 {
-    while(true) // TODO: ENQUANTO USUARIO NÃO FECHA
-    {
-        
-	}
+    //while(true) // TODO: ENQUANTO USUARIO NÃO FECHA
+    //{
+        // Wait for a command
+        cout << "\nwaiting for command\n";
+        struct packet *pkt = receive_payload(sockfd);
+        while(pkt->length == 0)
+        {
+            pkt = receive_payload(sockfd);
+        }
+        int command;
+        memcpy(&command, &pkt->_payload, pkt->length);
+        cout << "command received: " << command << endl;
+	//}
 }
 
 void *Communication_server::receive_commands_helper(void* void_args)

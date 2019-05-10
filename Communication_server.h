@@ -29,7 +29,6 @@ class Communication_server
 {
 	public:
 		Communication_server(int port);
-		void test();
 
 	protected:
 
@@ -43,7 +42,7 @@ class Communication_server
 		vector<Connected_client> connected_clients;
 		
 		void *accept_connections();
-		void *receive_commands(int newsockfd);
+		void *receive_commands(int sockfd);
 		
 		packet* receive_payload(int sockfd);// Receives the _payload of the packet from the client and returns a packet struct containing the _payload
 		packet* receive_header(int sockfd);	// Receives the header of the packet from the client and returns a packet struct containing the header

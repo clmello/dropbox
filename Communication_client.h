@@ -16,21 +16,22 @@
 
 
 class Communication_client {
+private:
+	int payload_size;
+	int header_size;
+	int packet_size;
+
 public:
 	typedef	struct	packet{
 		uint16_t	type;			//Tipo do pacote (p.ex. DATA | CMD)
 		uint16_t	seqn;			//Número de sequência
 		uint32_t	total_size;		//Número total de fragmentos
 		uint16_t	length;			//Comprimento do payload
-		const char*	_payload;	//Dados do pacote
-	} packet;	
-	bool connect_client_server(Client client);
+		char		_payload[502];	//Dados do pacote
+	} packet;
 
-private:
-	struct th_args{
-		void* obj = NULL;
-		int* newsockfd = NULL;
-	};
+	Communication_client();
+	bool connect_client_server(Client client);
 };
 
 #endif // COMMUNICATION_CLIENT_H

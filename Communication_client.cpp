@@ -13,21 +13,28 @@
 #include <netdb.h> 
 #include <pthread.h>
 
+Communication_client::Communication_client() {
+	this->payload_size = 502;
+	this->header_size = 10;
+	this->packet_size = payload_size + header_size;
+}
 
 bool Communication_client::connect_client_server(Client client) {
 	int sockfd, n;
 	int port = client.getPort();
 	std::string hostname = client.getHostname();
+	std::string username = client.getUsername();
 	bool connected = false;
     struct sockaddr_in serv_addr; // server_address
     struct hostent *server = gethostbyname(hostname.c_str());
 
-	char buffer[256];
+	char buffer[this->packet_size];
 	
 	if (server == NULL) {
 		std::cerr << "ERROR, no such host\n";
         return connected;
     }
+
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1) {
 		std::cerr << "ERROR opening socket\n";
@@ -41,38 +48,35 @@ bool Communication_client::connect_client_server(Client client) {
 	
     
 	if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-		std::cerr << "ERROR connecting\n";
+		std::cerr << "ERROR connecting with server\n";
 		return connected;
 	}
 
-    printf("Enter the message: ");
-    bzero(buffer, 256);
-    fgets(buffer, 256, stdin);
-    
-	/* write in the socket */
-	struct packet pacote_envio;
-	pacote_envio.type = 1;
-	pacote_envio.seqn=2;
-	pacote_envio.length=5;
-	pacote_envio._payload = "teste";
-	pacote_envio.total_size = sizeof(pacote_envio) + sizeof(sizeof(pacote_envio));
+	bzero(buffer, this->packet_size);
+	struct packet pkt;
+	pkt.type = 42;
+    pkt.seqn = 55;
+    pkt.total_size = 67;
+    pkt.length = 35;
+
+	memcpy(pkt._payload, username.c_str(), sizeof(username));
+    std::cout << "\n\ntamanho: " << sizeof(pkt) << std::endl;
+
+	// Escreve no socket
 	int bytes_sent = 0;
-	while (bytes_sent < sizeof(pacote_envio))
+	memcpy(&buffer, &pkt, this->packet_size);
+
+	while (bytes_sent < pkt.length + this->header_size)
 	{
-	    n = write(sockfd, buffer, strlen(buffer));
-        if (n < 0) 
-		    printf("ERROR writing to socket\n");
+	    n = write(sockfd, &buffer[bytes_sent], pkt.length + this->header_size - bytes_sent);
+        if (n < 0) {
+			std::cerr << "ERROR writing to socket\n";
+			return connected;
+		}
+		bytes_sent += n;
     }
-
-    bzero(buffer,256);
-	
-	/* read from the socket */
-    n = read(sockfd, buffer, 256);
-    if (n < 0) 
-		printf("ERROR reading from socket\n");
-
-    printf("%s\n",buffer);
     
 	close(sockfd);
-    return true;
+	connected = true;
+    return connected;
 }

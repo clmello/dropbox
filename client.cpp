@@ -107,7 +107,6 @@ void Client::userInterface() {
 
 int main(int argc, char **argv) {
 	if(argc < 4) {
-		// std::cerr for errors
 		std::cerr << "Argumentos insuficiente, siga o formato a seguir:\n";
 		std::cerr << "./dropboxClient <username> <server_ip_address> <port> \n";
 		std::exit(1);
@@ -120,11 +119,13 @@ int main(int argc, char **argv) {
 	Client client = Client(username, host, port);
 
 	/*** CONEXÃO COM O SERVIDOR ***/
-
-	//// TA DANDO ERRO MAS NAO SEI
     Communication_client communication_client;
 	bool connected = communication_client.connect_client_server(client);
 
+    if(!connected) {
+        std::cerr << "ERROR, can't connect with server \n";
+        std::exit(1);
+    }
 	/*** SINCRONIZAÇÃO COM O SERVIDOR ***/
     // Aqui verifica se já existe o diretório, se não existe então cria
     std::string dir = client.createSyncDir();

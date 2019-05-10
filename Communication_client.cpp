@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h> 
+#include <netdb.h>
 #include <pthread.h>
 
 Communication_client::Communication_client() {
@@ -29,7 +29,7 @@ bool Communication_client::connect_client_server(Client client) {
     struct hostent *server = gethostbyname(hostname.c_str());
 
 	char buffer[this->packet_size];
-	
+
 	if (server == NULL) {
 		std::cerr << "ERROR, no such host\n";
         return connected;
@@ -41,23 +41,29 @@ bool Communication_client::connect_client_server(Client client) {
         return connected;
     }
 
-	serv_addr.sin_family = AF_INET;     
-	serv_addr.sin_port = htons(port); 
-	serv_addr.sin_addr = *((struct in_addr *)server->h_addr);
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	serv_addr.sin_port = htons(port);
+	// serv_addr.sin_addr = *((struct in_addr *)server->h_addr);
 	bzero(&(serv_addr.sin_zero), 8);
-	
-    
+
+	if ((bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr))) != 0)
+	{
+		fprintf(stderr, "[Communication_client] ERROR on binding socket at port %i.\n", port);
+		exit(1);
+	}
+
 	if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-		std::cerr << "ERROR connecting with server\n";
+		std::cerr << "[Communication_client] ERROR connecting with server\n";
 		return connected;
 	}
 
 	bzero(buffer, this->packet_size);
-	struct packet pkt;
+	packet pkt;
 	pkt.type = 42;
-    pkt.seqn = 55;
-    pkt.total_size = 67;
-    pkt.length = 35;
+  pkt.seqn = 55;
+  pkt.total_size = 67;
+  pkt.length = 35;
 
 	memcpy(pkt._payload, username.c_str(), sizeof(username));
     std::cout << "\n\ntamanho: " << sizeof(pkt) << std::endl;
@@ -74,9 +80,9 @@ bool Communication_client::connect_client_server(Client client) {
 			return connected;
 		}
 		bytes_sent += n;
-    }
-    
+  }
+
 	close(sockfd);
 	connected = true;
-    return connected;
+  return connected;
 }

@@ -21,7 +21,7 @@ typedef	struct	packet{
 	uint16_t	seqn;		//Número de sequência
 	uint32_t	total_size;		//Número total de fragmentos
 	uint16_t	length;	//Comprimento do payload
-	char		_payload[512];				//Dados do pacote
+	const char*	_payload;				//Dados do pacote
 }	packet;	
 
 
@@ -36,7 +36,8 @@ class Communication_server
 		int port;
 		int header_size;
 		int max_payload;
-		char buffer[512];
+		int packet_size;
+		char* buffer;
 //		char output[512];
 		vector<pthread_t> client_threads;
 		vector<Connected_client> connected_clients;
@@ -46,7 +47,8 @@ class Communication_server
 		
 		packet* receive_payload(int sockfd);// Receives the _payload of the packet from the client and returns a packet struct containing the _payload
 		packet* receive_header(int sockfd);	// Receives the header of the packet from the client and returns a packet struct containing the header
-		void send_packet(int sockfd);
+		void send_data(int sockfd, uint16_t type, char* _payload, int total_payload_size);
+		char* receive_data(int sockfd);
 		
 		int create_folder(string path);
 		int delete_folder(string path);

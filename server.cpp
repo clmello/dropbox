@@ -1,7 +1,6 @@
 #include "Communication_server.h"
 #include <iostream>
 #include <pthread.h>
-//#include <fstream>
 
 using namespace std;
 
@@ -18,16 +17,19 @@ void print_bytes(const void *object, size_t size)
   }
   printf("]\n");
 }
+
 int main()
 {
-	/*char buffer[10];
+	/*
+	char buffer[10];
 	
 	struct packet pkt;
 	pkt.type = 10;
 	pkt.seqn = 3;
 	pkt.total_size = 340;
 	pkt. length = 6;
-	memcpy(pkt._payload, "teste", sizeof("teste"));
+	pkt._payload = (const char*)"teste";
+	//memcpy(pkt._payload, "teste", sizeof("teste"));
 	
 	
 	memcpy(&buffer, &pkt, 10);
@@ -39,7 +41,7 @@ int main()
 	cout << "\npayload_size: " << _payload_size << endl;
 	//cout << "\nsizeof(*pkt._payload) == " << sizeof(*pkt._payload) << endl;
 	//cout << sizeof("teste")<<"\nteste\n";*/
-	Communication_server com(4002);
+	Communication_server com(4001);
 	return 0;
 }
 /*struct helper_args{

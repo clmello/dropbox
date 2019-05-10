@@ -7,6 +7,8 @@ Communication_server::Communication_server(int port)
 	this->port = port;
 	this->header_size = 10;
 	this->max_payload = 502;
+	this->packet_size = this->header_size + this->max_payload;
+	this->buffer = (char*)malloc(packet_size);
 	cout << "\nchamando aceita_conexoes\n";
 	accept_connections();
 }
@@ -53,7 +55,7 @@ void *Communication_server::accept_connections()
 		cout << "\nUsername: " << connected_clients[0].get_username() << endl;
 		
 		// Create client folder, if it doesn't already exist
-		create_folder("/home/"+connected_clients[connected_clients.size()-1].get_username()+"_syncdir");
+		//create_folder("/home/"+connected_clients[connected_clients.size()-1].get_username()+"_syncdir");
 
         pthread_create(&client_thread, NULL, receive_commands_helper, &args);
         pthread_join(client_thread,NULL);
@@ -107,11 +109,12 @@ packet* Communication_server::receive_payload(int sockfd)
         bytes_received+=n;
 		cout << "\nbytes lidos: "<<bytes_received<<endl;
 	}
-	memcpy(&pkt->_payload, &buffer, pkt->length);
+	pkt->_payload = (const char*)buffer;
+	//memcpy(&pkt->_payload, &buffer, pkt->length);
 	//int i;
 	//memcpy(&i, &buffer, pkt->length);
 	//cout << "\npayload: " << i << endl;
-	cout << "\npayload: " << pkt->_payload << endl;
+	cout << "\npayload: " << *pkt->_payload << endl;
 	
 	return pkt;
 }
@@ -128,8 +131,19 @@ void *Communication_server::receive_commands(int sockfd)
             pkt = receive_payload(sockfd);
         }
         int command;
-        memcpy(&command, &pkt->_payload, pkt->length);
+        memcpy(&command, pkt->_payload, pkt->length);
         cout << "command received: " << command << endl;
+        
+        /*switch(command)
+        case 1:
+        {
+        }
+        case 2:
+        {
+        }
+        case 3:
+        {
+        }*/
 	//}
 }
 
@@ -138,6 +152,34 @@ void *Communication_server::receive_commands_helper(void* void_args)
     th_args* args = (th_args*)void_args;
     ((Communication_server*)args->obj)->receive_commands(*args->newsockfd);
     return 0;
+}
+
+void Communication_server::send_data(int sockfd, uint16_t type, char* _payload, int total_payload_size)
+{
+    if(total_payload_size > max_payload)
+    {
+        // Divide em pacotes menores e manda
+    }
+    else
+    {
+        struct packet pkt;
+        pkt.type = type;
+        pkt.seqn = 0;
+        pkt.total_size = 1;
+        pkt.length = total_payload_size;
+	    memcpy(&pkt.length, _payload, total_payload_size);
+	    /* write in the socket */
+	    int bytes_sent = 0;
+	    memcpy(&buffer, &pkt, packet_size);
+	    while (bytes_sent < pkt.length + header_size)
+	    {
+	        int n = write(sockfd, &buffer[bytes_sent], pkt.length + header_size-bytes_sent);
+            if (n < 0) 
+		        printf("ERROR writing to socket\n");
+		    bytes_sent += n;
+        }
+        cout << "bytes sent: " << bytes_sent << endl;
+    }
 }
 
 int Communication_server::create_folder(string path)

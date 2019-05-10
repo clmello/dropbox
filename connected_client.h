@@ -13,6 +13,7 @@ class Connected_client{
 	public:
 		Connected_client(pthread_t thread, string username, int sockfd);
 
+		string get_username();
 		int get_sockfd();
 		int get_num_connections();
 

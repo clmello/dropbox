@@ -66,6 +66,7 @@ void *Communication_server::accept_connections()
 packet* Communication_server::receive_header(int sockfd)
 {
 	int bytes_received=0;
+    buffer = (char*)malloc(packet_size);
     bzero(buffer, header_size);
 	cout << "\nbytes lidos: "<<bytes_received<<endl;
     while(bytes_received < header_size)
@@ -98,6 +99,7 @@ packet* Communication_server::receive_payload(int sockfd)
 {
     struct packet *pkt = receive_header(sockfd);
 	int bytes_received=0;
+	buffer = (char*)malloc(pkt->length);
     bzero(buffer, pkt->length);
     while(bytes_received < pkt->length)
     {
@@ -110,10 +112,6 @@ packet* Communication_server::receive_payload(int sockfd)
 		cout << "\nbytes lidos: "<<bytes_received<<endl;
 	}
 	pkt->_payload = (const char*)buffer;
-	//memcpy(&pkt->_payload, &buffer, pkt->length);
-	//int i;
-	//memcpy(&i, &buffer, pkt->length);
-	//cout << "\npayload: " << i << endl;
 	cout << "\npayload: " << *pkt->_payload << endl;
 	
 	return pkt;
@@ -159,26 +157,50 @@ void Communication_server::send_data(int sockfd, uint16_t type, char* _payload, 
     if(total_payload_size > max_payload)
     {
         // Divide em pacotes menores e manda
+        
     }
     else
     {
+        // Create the packet that will be sent
         struct packet pkt;
         pkt.type = type;
         pkt.seqn = 0;
         pkt.total_size = 1;
         pkt.length = total_payload_size;
-	    memcpy(&pkt.length, _payload, total_payload_size);
+	    pkt._payload = _payload;
+	    
+	    // copy pkt to buffer
+	    buffer = (char*)malloc(header_size);
+	    buffer = (char*)&pkt;
+	    
+	    //------------------------------------------------------------------------
+	    // SEND HEADER
+        //------------------------------------------------------------------------
 	    /* write in the socket */
 	    int bytes_sent = 0;
-	    memcpy(&buffer, &pkt, packet_size);
-	    while (bytes_sent < pkt.length + header_size)
+	    while (bytes_sent < header_size)
 	    {
-	        int n = write(sockfd, &buffer[bytes_sent], pkt.length + header_size-bytes_sent);
+	        int n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
             if (n < 0) 
 		        printf("ERROR writing to socket\n");
 		    bytes_sent += n;
         }
         cout << "bytes sent: " << bytes_sent << endl;
+        
+        //------------------------------------------------------------------------
+	    // SEND PAYLOAD
+        //------------------------------------------------------------------------
+	    /* write in the socket */
+	    bytes_sent = 0;
+	    while (bytes_sent < pkt.length)
+	    {
+	        int n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+            if (n < 0) 
+		        printf("ERROR writing to socket\n");
+		    bytes_sent += n;
+        }
+        cout << "bytes sent: " << bytes_sent << endl;
+        //------------------------------------------------------------------------
     }
 }
 

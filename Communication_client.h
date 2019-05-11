@@ -20,6 +20,7 @@ private:
 	int payload_size;
 	int header_size;
 	int packet_size;
+	int sockfd;
 
 public:
 	typedef	struct	packet{
@@ -27,11 +28,12 @@ public:
 		uint16_t	seqn;			//Número de sequência
 		uint32_t	total_size;		//Número total de fragmentos
 		uint16_t	length;			//Comprimento do payload
-		char		_payload[502];	//Dados do pacote
+		const char*	_payload;		//Dados do pacote
 	} packet;
 
 	Communication_client();
 	bool connect_client_server(Client client);
+	void send_command(int command);
 };
 
 #endif // COMMUNICATION_CLIENT_H

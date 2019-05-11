@@ -50,9 +50,11 @@ void *Communication_server::accept_connections()
 		
 		// Create the new connected client and add it to the connected_clients vector
 		pthread_t client_thread;
+		//TODO: VERIFICAR SE TEM DUAS CONEXOES
 		Connected_client new_client(client_thread, receive_payload(newsockfd)->_payload, newsockfd);
 		connected_clients.push_back(new_client);
 		cout << "\nUsername: " << connected_clients[0].get_username() << endl;
+		this->username = connected_clients[0].get_username();
 		
 		// Create client folder, if it doesn't already exist
 		//create_folder("/home/"+connected_clients[connected_clients.size()-1].get_username()+"_syncdir");
@@ -81,6 +83,7 @@ packet* Communication_server::receive_header(int sockfd)
 	}
 	// Bytes from buffer[4] to buffer[7] are the size of _payload
 	struct packet* header;
+	header = (packet*)malloc(header_size);
 	memcpy(&header->type, &buffer, 2);
 	memcpy(&header->seqn, &buffer[2], 2);
 	memcpy(&header->total_size, &buffer[4], 4);
@@ -133,6 +136,12 @@ void *Communication_server::receive_commands(int sockfd)
         {
             case 1: // Upload to server
             {
+                cout << "\ncommand 1 received\n";
+                string path = "/home/" + username + "_syncdir/" + receive_payload(sockfd)->_payload;
+                char* file = receive_data(sockfd);
+                long file_size = strlen(file);
+                create_file(path, file, file_size);
+                
             }
             case 2: // Download from server
             {
@@ -163,8 +172,12 @@ void *Communication_server::receive_commands_helper(void* void_args)
     return 0;
 }
 
-void Communication_server::send_data(int sockfd, uint16_t type, char* _payload, int total_payload_size)
+void Communication_server::send_data(int sockfd, uint16_t type, char* _payload, long total_payload_size, bool sending_file)
 {
+    // If a file is being sent, keep the file pointer
+    FILE *fp;
+    if(sending_file)
+        fp = (FILE*)_payload;
     if(total_payload_size > max_payload)
     {
         // If the data is too large to send in one go, divide it into separate packets.
@@ -267,13 +280,46 @@ void Communication_server::send_data(int sockfd, uint16_t type, char* _payload, 
         cout << "bytes sent: " << bytes_sent << endl;
         //------------------------------------------------------------------------
     }
+    // If a file has been sent, close the file
+    if(sending_file)
+        fclose(fp);
 }
 
 char* Communication_server::receive_data(int sockfd)
 {
-    // TODO: continuar!!
-    char* data_received;
-    struct packet* pkt = receive_header(sockfd);
+    struct packet* pkt = receive_payload(sockfd);
+    if(pkt->total_size == 1)
+    {
+        cout << "\n\ndata received: " << pkt->_payload << endl;
+        return (char*)pkt->_payload;
+    }
+    else
+    {
+        char* data = (char*)malloc(pkt->length);
+        data = (char*)pkt->_payload;
+        int i;
+        // Receive all the packets that are going to be sent
+        for(i=2; i<pkt->total_size; i++)
+        {
+            pkt = receive_payload(sockfd);
+            memcpy(&data[strlen(data)], pkt->_payload, pkt->length);
+        }
+        cout << "\n\ndata received: " << data << endl;
+        return data;
+    }
+}
+
+char* Communication_server::read_file(string path)
+{
+    char ch, file_name[25];
+    FILE *fp;
+    
+    fp = fopen(path.c_str(), "r"); // read mode
+    
+    if(fp == NULL)
+        cout << "Error opening file " << path << endl;
+    
+    return (char*)fp;
 }
 
 int Communication_server::create_folder(string path)
@@ -302,6 +348,29 @@ int Communication_server::delete_folder(string path)
             return -1;
     }
     return 0;
+}
+
+int Communication_server::create_file(string path, char* file, long file_size)
+{
+    FILE* fp = fopen(path.c_str(), "w");
+    
+    int i;
+    for(i=0; i<file_size; i++)
+        fwrite(&file[i], 1, 8, fp);
+        
+    fclose(fp);
+}
+
+long Communication_server::get_file_size(string path)
+{
+    FILE* fp = fopen(path.c_str(), "r");
+    if(fp==NULL)
+        cout << "\nError opening file " << path << endl;
+    fseek(fp, 0 , SEEK_END);
+    long size = ftell(fp);
+    fseek(fp, 0 , SEEK_SET);
+    
+    return size;
 }
 
 

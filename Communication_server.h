@@ -41,19 +41,22 @@ class Communication_server
 //		char output[512];
 		vector<pthread_t> client_threads;
 		vector<Connected_client> connected_clients;
+		string username;
 		
 		void *accept_connections();
 		void *receive_commands(int sockfd);
 		
 		packet* receive_payload(int sockfd);// Receives the _payload of the packet from the client and returns a packet struct containing the _payload
 		packet* receive_header(int sockfd);	// Receives the header of the packet from the client and returns a packet struct containing the header
-		void send_data(int sockfd, uint16_t type, char* _payload, int total_payload_size);
+		void send_data(int sockfd, uint16_t type, char* _payload, long total_payload_size, bool sending_file);
 		char* receive_data(int sockfd);
+		char* read_file(string path);
 		
 		int create_folder(string path);
 		int delete_folder(string path);
-		int create_file(string path, char* file);
+		int create_file(string path, char* file, long file_size);
 		int delete_file(string path);
+		long get_file_size(string path);
 
 
 		struct th_args{

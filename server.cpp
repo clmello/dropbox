@@ -41,6 +41,7 @@ int main()
 	cout << "\npayload_size: " << _payload_size << endl;
 	//cout << "\nsizeof(*pkt._payload) == " << sizeof(*pkt._payload) << endl;
 	//cout << sizeof("teste")<<"\nteste\n";*/
+	
 	Communication_server com(4001);
 	return 0;
 }

@@ -2,7 +2,8 @@ CC = g++
 FLAGS = -g -pthread -std=c++11
 CFLAGS = $(FLAGS) $(INCLUDE)
 
-UTILS_SERVER = Communication_server.o \
+UTILS_SERVER = 	Communication_server.o \
+				connected_client.o \
 
 UTILS_CLIENT = Communication_client.o \
 

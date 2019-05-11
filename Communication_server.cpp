@@ -66,7 +66,6 @@ void *Communication_server::accept_connections()
 packet* Communication_server::receive_header(int sockfd)
 {
 	int bytes_received=0;
-    buffer = (char*)malloc(packet_size);
     bzero(buffer, header_size);
 	cout << "\nbytes lidos: "<<bytes_received<<endl;
     while(bytes_received < header_size)
@@ -82,7 +81,6 @@ packet* Communication_server::receive_header(int sockfd)
 	}
 	// Bytes from buffer[4] to buffer[7] are the size of _payload
 	struct packet* header;
-	header = (packet*) malloc( sizeof(packet) );
 	memcpy(&header->type, &buffer, 2);
 	memcpy(&header->seqn, &buffer[2], 2);
 	memcpy(&header->total_size, &buffer[4], 4);
@@ -99,7 +97,6 @@ packet* Communication_server::receive_payload(int sockfd)
 {
     struct packet *pkt = receive_header(sockfd);
 	int bytes_received=0;
-	buffer = (char*)malloc(pkt->length);
     bzero(buffer, pkt->length);
     while(bytes_received < pkt->length)
     {
@@ -132,16 +129,30 @@ void *Communication_server::receive_commands(int sockfd)
         memcpy(&command, pkt->_payload, pkt->length);
         cout << "command received: " << command << endl;
         
-        /*switch(command)
-        case 1:
+        switch(command)
         {
+            case 1: // Upload to server
+            {
+            }
+            case 2: // Download from server
+            {
+            }
+            case 3: // Delete file
+            {
+            }
+            case 4: // List server
+            {
+            }
+            case 6: // Get sync_dir
+            {
+            }
+            case 7: // Exit
+            {
+            }
+            default:
+            {
+            }
         }
-        case 2:
-        {
-        }
-        case 3:
-        {
-        }*/
 	//}
 }
 
@@ -156,10 +167,65 @@ void Communication_server::send_data(int sockfd, uint16_t type, char* _payload, 
 {
     if(total_payload_size > max_payload)
     {
-        // Divide em pacotes menores e manda
+        // If the data is too large to send in one go, divide it into separate packets.
+        float total_size_f = (float)total_payload_size/(float)max_payload;
+        int total_size = total_size_f;
+        if (total_size_f > total_size)
+            total_size ++;
         
+        int i;
+        int total_bytes_sent = 0;
+        for(i=0; i<total_size; i++)
+        {
+            // Create the packet that will be sent
+            struct packet pkt;
+            pkt.type = type;
+            pkt.seqn = 0;
+            pkt.total_size = total_size;
+            if(max_payload > total_payload_size-total_bytes_sent)
+                pkt.length = total_payload_size - total_bytes_sent;
+            else
+                pkt.length = max_payload;
+	        pkt._payload = _payload;
+	        
+	        // copy pkt to buffer
+	        buffer = (char*)&pkt;
+	        
+	        //------------------------------------------------------------------------
+	        // SEND HEADER
+            //------------------------------------------------------------------------
+	        /* write in the socket */
+	        int bytes_sent = 0;
+	        while (bytes_sent < header_size)
+	        {
+	            int n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
+                if (n < 0) 
+		            printf("ERROR writing to socket\n");
+		        bytes_sent += n;
+            }
+            total_bytes_sent += bytes_sent;
+            cout << "bytes sent: " << bytes_sent << endl;
+            
+            //------------------------------------------------------------------------
+	        // SEND PAYLOAD
+            //------------------------------------------------------------------------
+	        /* write in the socket */
+	        bytes_sent = 0;
+	        while (bytes_sent < pkt.length)
+	        {
+	            int n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+                if (n < 0) 
+		            printf("ERROR writing to socket\n");
+		        bytes_sent += n;
+            }
+            total_bytes_sent += bytes_sent;
+            cout << "bytes sent: " << bytes_sent << endl;
+            //------------------------------------------------------------------------
+        }
+        // Increment the pointer so that we don't send the same data twice
+        _payload += total_bytes_sent;
     }
-    else
+    else // If the server can send it in one go
     {
         // Create the packet that will be sent
         struct packet pkt;
@@ -170,7 +236,6 @@ void Communication_server::send_data(int sockfd, uint16_t type, char* _payload, 
 	    pkt._payload = _payload;
 	    
 	    // copy pkt to buffer
-	    buffer = (char*)malloc(header_size);
 	    buffer = (char*)&pkt;
 	    
 	    //------------------------------------------------------------------------
@@ -202,6 +267,13 @@ void Communication_server::send_data(int sockfd, uint16_t type, char* _payload, 
         cout << "bytes sent: " << bytes_sent << endl;
         //------------------------------------------------------------------------
     }
+}
+
+char* Communication_server::receive_data(int sockfd)
+{
+    // TODO: continuar!!
+    char* data_received;
+    struct packet* pkt = receive_header(sockfd);
 }
 
 int Communication_server::create_folder(string path)

@@ -41,7 +41,17 @@ int main()
 	cout << "\npayload_size: " << _payload_size << endl;
 	//cout << "\nsizeof(*pkt._payload) == " << sizeof(*pkt._payload) << endl;
 	//cout << sizeof("teste")<<"\nteste\n";*/
-	Communication_server com(4001);
+	int total_payload_size = 35;
+	int max_payload = 10;
+	float total_size_f = (float)total_payload_size/(float)max_payload;
+    cout << "\ntotal_size_f: " << total_size_f << endl;
+    int total_size = total_size_f;
+    cout << "\ntotal_size: " << total_size << endl;
+    if (total_size_f > total_size)
+        total_size ++;
+        
+    cout << "\ntotal_size: " << total_size << endl;
+	//Communication_server com(4001);
 	return 0;
 }
 /*struct helper_args{

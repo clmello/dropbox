@@ -239,10 +239,21 @@ void Client::userInterface() {
     bool running = true;
     std::string input;
     std::string command;
+    std::string argument;
 
     while(running) {
-        std::getline(std::cin, input);
+       std::getline(std::cin, input);
         command = input.substr(0, input.find(" "));
+        input = input.substr(input.find(" ") + 1, input.length());
+
+        if (input != "")
+            argument = input;
+
+        else
+            argument = "";
+
+        input = "";
+
 
         if(command == "upload") {
             printf("entrei no upload\n");
@@ -257,8 +268,24 @@ void Client::userInterface() {
         }
         else if(command == "delete") {
             std::cout << "Delete \n";
-            communication.send_command(3);
-            // metodo pra delete
+
+            if (argument == "")
+                std::cout << "Delete needs argument <file>";
+
+            else
+            {
+                std::string fileName = dir + "/" + argument;
+
+                if (unlink(fileName.c_str()) == -1)
+                    std::cout << "Error on Delete file: " << fileName << "\n";
+
+                else
+                {
+                    std::cout << "Deleted file: " << fileName << "\n";
+                }
+            }
+
+                    communication.send_command(3);
         }
         else if(command == "list_server") {
             std::cout << "List Server \n";
@@ -268,7 +295,17 @@ void Client::userInterface() {
         else if(command == "list_client") {
             std::cout << "List Client \n";
             communication.send_command(5);
-            // metodo pra lit_client
+             DIR *fileDir; 
+            struct dirent *lsdir;
+
+            fileDir= opendir(dir.c_str());
+
+            while ((lsdir = readdir(fileDir)) != NULL)
+            {
+                printf("%s\n", lsdir->d_name);
+            }
+
+            closedir(fileDir);
         }
         else if(command == "get_sync_dir") {
             std::cout << "Get Sync Dir \n";

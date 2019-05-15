@@ -43,7 +43,7 @@ void print_bytes(const void *object, size_t size)
 
 
 
-char* read_file(string path)
+FILE* read_file(string path)
 {
     char ch, file_name[25];
     FILE *fp;
@@ -53,7 +53,7 @@ char* read_file(string path)
     if(fp == NULL)
         cout << "Error opening file " << path << endl;
     
-    return (char*)fp;
+    return fp;
 }
 
 
@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
         printf("ERROR connecting\n");
 	
     char* buffer;
+    char* file_buffer = (char*)malloc(payload_size);
     const char* payload = (char*)"alack";
     
     // Create the packet that will be sent
@@ -234,10 +235,13 @@ int main(int argc, char *argv[])
     //------------------------------------------------------------------------
     // SEND FILE
     //------------------------------------------------------------------------
-    char* _payload = read_file("/home/alack/Downloads/sync_dir_vinicius/teste.txt");
-    fseek((FILE*)_payload, 0 , SEEK_END);
-    long total_payload_size = ftell((FILE*)_payload);
-    fseek((FILE*)_payload, 0 , SEEK_SET);
+    FILE *fp = read_file("/home/alack/Downloads/sync_dir_vinicius/teste.txt");
+    
+    // Get the size of the file
+    fseek(fp, 0 , SEEK_END);
+    long total_payload_size = ftell(fp);
+    // Go back to the beggining
+    fseek(fp, 0 , SEEK_SET);
     
     uint16_t type = 0;
     
@@ -253,6 +257,8 @@ int main(int argc, char *argv[])
         int i;
         int total_bytes_sent = 0;
         cout << "\n\nenviando: " << endl << (char*)buffer << endl;
+        
+        // Send each packet
         for(i=1; i<=total_size; i++)
         {
             // Create the packet that will be sent
@@ -264,9 +270,14 @@ int main(int argc, char *argv[])
                 pkt.length = total_payload_size - total_bytes_sent;
             else
                 pkt.length = payload_size;
-	        pkt._payload = _payload;
+            
+            // Read pkt.length bytes from the file
+            fread(file_buffer, 1, pkt.length, fp);
+            // Save it to pkt._payload
+            pkt._payload = file_buffer;
+//	        pkt._payload = _payload;
 	        
-	        // copy pkt to buffer
+	        // Point buffer to pkt
 	        buffer = (char*)&pkt;
 	        
 	        //------------------------------------------------------------------------
@@ -300,21 +311,24 @@ int main(int argc, char *argv[])
             }
             total_bytes_sent += bytes_sent;
             cout << "PACKET!\n";
+            cout << "content: " << endl << pkt._payload << endl;
             cout << "bytes sent: " << bytes_sent << endl;
             //------------------------------------------------------------------------
         }
         // Increment the pointer so that we don't send the same data twice
-        _payload += total_bytes_sent;
+        //_payload += total_bytes_sent;
     }
     else // If the server can send it in one go
     {
+        // Read the file
+        fread(file_buffer, 1, total_payload_size, fp);
         // Create the packet that will be sent
         struct packet pkt;
         pkt.type = type;
         pkt.seqn = 1;
         pkt.total_size = 1;
         pkt.length = total_payload_size;
-	    pkt._payload = _payload;
+	    pkt._payload = file_buffer;
 	    
 	    // copy pkt to buffer
 	    buffer = (char*)&pkt;

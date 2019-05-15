@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
     // Create the packet that will be sent
     struct packet pkt;
     pkt.type = 2;
-    pkt.seqn = 0;
+    pkt.seqn = 1;
     pkt.total_size = 1;
     pkt.length = 5;
 	pkt._payload = payload;
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
     
     sleep(5);
     pkt.type = 1;
-    pkt.seqn = 0;
+    pkt.seqn = 1;
     pkt.total_size = 1;
     pkt.length = sizeof(int);
     int command = 1;
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
     
     // Create the packet that will be sent
     pkt.type = 2;
-    pkt.seqn = 0;
+    pkt.seqn = 1;
     pkt.total_size = 1;
     pkt.length = 9;
 	pkt._payload = payload;
@@ -248,10 +248,12 @@ int main(int argc, char *argv[])
         int total_size = total_size_f;
         if (total_size_f > total_size)
             total_size ++;
+        cout << "\n\ntotal size: " << total_size;
         
         int i;
         int total_bytes_sent = 0;
-        for(i=0; i<total_size; i++)
+        cout << "\n\nenviando: " << endl << (char*)buffer << endl;
+        for(i=1; i<=total_size; i++)
         {
             // Create the packet that will be sent
             struct packet pkt;
@@ -309,7 +311,7 @@ int main(int argc, char *argv[])
         // Create the packet that will be sent
         struct packet pkt;
         pkt.type = type;
-        pkt.seqn = 0;
+        pkt.seqn = 1;
         pkt.total_size = 1;
         pkt.length = total_payload_size;
 	    pkt._payload = _payload;

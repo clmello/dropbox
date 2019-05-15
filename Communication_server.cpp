@@ -296,13 +296,17 @@ char* Communication_server::receive_data(int sockfd)
     else
     {
         char* data = (char*)malloc(pkt->length);
-        data = (char*)pkt->_payload;
+        memcpy(&data[strlen(data)], pkt->_payload, pkt->length);
         int i;
-        // Receive all the packets that are going to be sent
-        for(i=2; i<pkt->total_size; i++)
+        uint32_t total_size = pkt->total_size;
+        // Receive all the packets sent by the client
+        // The first packet has already been received
+        for(i=pkt->seqn+1; i<=total_size; i++)
         {
             pkt = receive_payload(sockfd);
             memcpy(&data[strlen(data)], pkt->_payload, pkt->length);
+            cout << "\npacote " << pkt->seqn << " de " << pkt->total_size << " recebido";
+            cout << "\ni: " << i;
         }
         cout << "\n\ndata received: " << data << endl;
         return data;

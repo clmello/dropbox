@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
 	
     char* buffer;
     char* file_buffer = (char*)malloc(payload_size);
-    const char* payload = (char*)"alack";
+    const char* payload = (char*)"bla";
     
     // Create the packet that will be sent
     struct packet pkt;
@@ -109,7 +109,14 @@ int main(int argc, char *argv[])
 	pkt._payload = payload;
     std::cout << "\n\npayload: " << pkt._payload << std::endl;
     
-    
+
+
+
+
+
+
+
+
     //------------------------------------------------------------------------
 	// SEND USERNAME
     //------------------------------------------------------------------------
@@ -235,14 +242,39 @@ int main(int argc, char *argv[])
     //------------------------------------------------------------------------
     // SEND FILE
     //------------------------------------------------------------------------
-    FILE *fp = read_file("/home/alack/Downloads/sync_dir_vinicius/teste.txt");
+
+    FILE *fp = fopen("/home/carol/sync_dir_bla/teste.txt", "r");
     
     // Get the size of the file
     fseek(fp, 0 , SEEK_END);
     long total_payload_size = ftell(fp);
     // Go back to the beggining
     fseek(fp, 0 , SEEK_SET);
+
+    //SEND FILE SEM PACOTES
+    char socorro[502];
+    bzero(socorro, 502);
+
+    size_t bytes_read_from_file;
+    while ((bytes_read_from_file = fread(socorro, sizeof(char), 502, fp)) > 0) {
+
+        ssize_t bytes_sent = 0;
+        while (bytes_sent < bytes_read_from_file) {
+            if ((bytes_sent += send(sockfd, socorro + bytes_sent, bytes_read_from_file, 0)) < 0) {
+                fprintf(stderr, "ERROR sending archieve.\n");
+            }
+        }
+        cout << "\n\nDados enviados: \n" << socorro;
+        bzero(socorro, 502);
+    }
     
+    printf("\nEnviou essa bagaça\n");
+    cout << "\nBytes read from file: " << bytes_read_from_file;
+    cout << "\nBytes sent: " << bytes_sent;
+
+
+    // SEND FILE POR PACOTES
+/*
     uint16_t type = 0;
     
     if(total_payload_size > payload_size)
@@ -283,7 +315,7 @@ int main(int argc, char *argv[])
 	        //------------------------------------------------------------------------
 	        // SEND HEADER
             //------------------------------------------------------------------------
-	        /* write in the socket */
+	        // write in the socket
 	        int bytes_sent = 0;
 	        while (bytes_sent < header_size)
 	        {
@@ -300,7 +332,7 @@ int main(int argc, char *argv[])
             //------------------------------------------------------------------------
 	        // SEND PAYLOAD
             //------------------------------------------------------------------------
-	        /* write in the socket */
+	        // write in the socket
 	        bytes_sent = 0;
 	        while (bytes_sent < pkt.length)
 	        {
@@ -336,7 +368,7 @@ int main(int argc, char *argv[])
 	    //------------------------------------------------------------------------
 	    // SEND HEADER
         //------------------------------------------------------------------------
-	    /* write in the socket */
+	    // write in the socket
 	    int bytes_sent = 0;
 	    while (bytes_sent < header_size)
 	    {
@@ -345,12 +377,13 @@ int main(int argc, char *argv[])
 		        printf("ERROR writing to socket\n");
 		    bytes_sent += n;
         }
+        cout << "\n\nHEADER!\n";
         cout << "bytes sent: " << bytes_sent << endl;
         
         //------------------------------------------------------------------------
 	    // SEND PAYLOAD
         //------------------------------------------------------------------------
-	    /* write in the socket */
+	    // write in the socket
 	    bytes_sent = 0;
 	    while (bytes_sent < pkt.length)
 	    {
@@ -363,8 +396,7 @@ int main(int argc, char *argv[])
         //------------------------------------------------------------------------
     }
     //------------------------------------------------------------------------
-    
-    
+*/
 	close(sockfd);
     return 0;
 }

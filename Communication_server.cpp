@@ -138,9 +138,12 @@ void *Communication_server::receive_commands(int sockfd)
             {
                 cout << "\ncommand 1 received\n";
                 string path = "/home/" + username + "_syncdir/" + receive_payload(sockfd)->_payload;
-                char* file = receive_data(sockfd);
+                cout << "String path: " << path;
+                char* file = receive_data(sockfd, path);
+                printf("recebeu o arquivo \n");
                 long file_size = strlen(file);
                 create_file(path, file, file_size);
+                //printf("criou o arquivo-path \n");
                 
             }
             case 2: // Download from server
@@ -285,6 +288,9 @@ void Communication_server::send_data(int sockfd, uint16_t type, char* _payload, 
         fclose(fp);
 }
 
+
+// AQUI COM PACOTES
+/*
 char* Communication_server::receive_data(int sockfd)
 {
     struct packet* pkt = receive_payload(sockfd);
@@ -301,15 +307,62 @@ char* Communication_server::receive_data(int sockfd)
         uint32_t total_size = pkt->total_size;
         // Receive all the packets sent by the client
         // The first packet has already been received
+        cout << "\nRECEIVING DATA";
         for(i=pkt->seqn+1; i<=total_size; i++)
         {
+            cout << "\nTOTAL SIZE: " << total_size;
+            cout << "\nSEQN: " << pkt->seqn;
             pkt = receive_payload(sockfd);
             memcpy(&data[strlen(data)], pkt->_payload, pkt->length);
             cout << "\npacote " << pkt->seqn << " de " << pkt->total_size << " recebido";
             cout << "\ni: " << i;
+            cout << "\nData received this time: " << data;
         }
+        cout << "\n\nFINISHED THIS SHIT OMG WOW\n";
         cout << "\n\ndata received: " << data << endl;
         return data;
+    }
+}
+*/
+
+// AQUI SEM PACOTES
+// DANDO SEGMENTATION FAULT QUE DELICIA
+char* Communication_server::receive_data(int sockfd, string path) {
+    FILE *fp = fopen("/home/carol/sync_dir_bla/teste.txt", "r");
+
+    // Get the size of the file
+    fseek(fp, 0 , SEEK_END);
+    long total_payload_size = ftell(fp);
+
+    // Go back to the beggining
+    fseek(fp, 0 , SEEK_SET);
+    cout << "\n\nTOTAL PAYLOAD SIZE: " << total_payload_size;
+    char buffer[502];
+    bzero(buffer, 502);
+    printf("\nvai abrir essa merda\n");
+    FILE *file = fopen(path.c_str(), "wb");
+    printf("ABRIU O ARQUIVO \n");
+
+    size_t bytes_received = 0;
+
+    while (bytes_received < total_payload_size) {
+        ssize_t bytes_read_from_socket = 0;
+        printf("\nFIRST WHILE");
+        while ((bytes_read_from_socket = recv(sockfd, buffer, 502, 0)) > 0) {
+            ssize_t bytes_written_to_file = fwrite(buffer, sizeof(char), bytes_read_from_socket, file);
+
+            if (bytes_written_to_file < bytes_read_from_socket) {
+                std::cerr << "Erro na escrita do arquivo.\n";
+            }
+
+            bzero(buffer, 502);
+            bytes_received += bytes_read_from_socket;
+            printf("\nSECOND WHILE GOD HELP ME");
+            if (bytes_received == total_payload_size) {
+                break;
+            }
+        }
+        printf("life is beautiful\n");
     }
 }
 

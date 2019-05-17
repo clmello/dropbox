@@ -38,6 +38,7 @@ class Communication_server
 		int max_payload;
 		int packet_size;
 		char* buffer;
+		struct packet* header;
 //		char output[512];
 		vector<pthread_t> client_threads;
 		vector<Connected_client> connected_clients;
@@ -51,7 +52,6 @@ class Communication_server
 		void send_file(int sockfd, string file_name, string path); // Send a file to the client
 		void send_string(int sockfd, string str); // Send a string to the client
 		void receive_file(int sockfd, string path); // Receive a file from the client
-		char* read_file(string path); // Read a local file
 		
 		int create_folder(string path);
 		int delete_folder(string path);

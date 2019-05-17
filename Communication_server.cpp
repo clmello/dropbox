@@ -9,6 +9,7 @@ Communication_server::Communication_server(int port)
 	this->max_payload = 502;
 	this->packet_size = this->header_size + this->max_payload;
 	this->buffer = (char*)malloc(packet_size);
+	this->header = (packet*)malloc(header_size);
 	cout << "\nchamando aceita_conexoes\n";
 	accept_connections();
 }
@@ -86,8 +87,6 @@ packet* Communication_server::receive_header(int sockfd)
 		cout << "\nbytes lidos: "<<bytes_received;
 	}
 	// Bytes from buffer[4] to buffer[7] are the size of _payload
-	struct packet* header;
-	header = (packet*)malloc(header_size);
 	memcpy(&header->type, &buffer[0], 2);
 	memcpy(&header->seqn, &buffer[2], 2);
 	memcpy(&header->total_size, &buffer[4], 4);
@@ -309,6 +308,7 @@ void Communication_server::send_string(int sockfd, string str)
         cout << "bytes sent: " << bytes_sent << endl;
         //------------------------------------------------------------------------
     }
+    free(str_buff);
 }
 
 void Communication_server::send_file(int sockfd, string file_name, string path)
@@ -453,6 +453,7 @@ void Communication_server::send_file(int sockfd, string file_name, string path)
         cout << "bytes sent: " << bytes_sent << endl;
         //------------------------------------------------------------------------
     }
+    free(file_buffer);
     fclose(fp);
 }
 
@@ -470,7 +471,9 @@ void Communication_server::receive_file(int sockfd, string path) {
     // Write the first payload to the file
     ssize_t bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
     if (bytes_written_to_file < pkt->length)
-        cout << "\nERROR WRITING TO " << path << endl; 
+        cout << "\nERROR WRITING TO " << path << endl;
+    
+    cout << bytes_written_to_file << " bytes written to file" << endl;
     
     // Receive all the [total_size] packets
     // It starts at 2 because the first packet has already been received
@@ -485,19 +488,7 @@ void Communication_server::receive_file(int sockfd, string path) {
             cout << "\nERROR WRITING TO " << path << endl;
         cout << "\n" << bytes_written_to_file << " bytes written to file\n";
     }
-}
-
-char* Communication_server::read_file(string path)
-{
-    char ch, file_name[25];
-    FILE *fp;
-    
-    fp = fopen(path.c_str(), "r"); // read mode
-    
-    if(fp == NULL)
-        cout << "Error opening file " << path << endl;
-    
-    return (char*)fp;
+    fclose(fp);
 }
 
 int Communication_server::create_folder(string path)
@@ -511,6 +502,7 @@ int Communication_server::create_folder(string path)
         if(error < 0)
             return -1;
     }
+    closedir(dir);
     return 0;
 }
 
@@ -525,6 +517,7 @@ int Communication_server::delete_folder(string path)
         if(error < 0)
             return -1;
     }
+    closedir(dir);
     return 0;
 }
 
@@ -548,5 +541,6 @@ long Communication_server::get_file_size(string path)
     long size = ftell(fp);
     fseek(fp, 0 , SEEK_SET);
     
+    fclose(fp);
     return size;
 }

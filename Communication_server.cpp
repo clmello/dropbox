@@ -75,7 +75,10 @@ packet* Communication_server::receive_header(int sockfd)
     {
         //cout << "\n\nsockfd = " << sockfd << "\n\n";
         /* read from the socket */
-        int n = read(sockfd, buffer, header_size);
+        cout << "\nBYTES_LIDOS ANTES DO READ: " << bytes_received;
+        int n = read(sockfd, buffer, header_size-bytes_received);
+        cout << "\nBYTES_LIDOS DEPOIS DO READ: " << bytes_received;
+        cout << "\nN DEPOIS DO READ: " << n;
         if (n < 0)
             printf("ERROR reading from socket");
             
@@ -119,7 +122,7 @@ packet* Communication_server::receive_payload(int sockfd)
 	    printf("%.*s\n", max_payload, pkt->_payload);
     }
     else{ // If the packet is a command
-	    cout << "payload(int): ";
+	    cout << "\npayload(int): ";
         int command;
         memcpy(&command, pkt->_payload, pkt->length);
         cout << command;
@@ -237,8 +240,7 @@ void Communication_server::send_string(int sockfd, string str)
     int i;
     int total_bytes_sent = 0;
     char *str_buff = (char*)malloc(str.size());
-    cout << "\n\nenviando: " << endl;
-	printf("%.*s\n", (int)str.size(), str_buff);
+    cout << "\n\nenviando: " << endl << str;
     
     // Send each packet
     // If only one packet will be sent, the program will go through the loop only once

@@ -129,6 +129,20 @@ int main(int argc, char *argv[])
 	buffer = (char*)malloc(header_size);
 	buffer = (char*)&pkt;
 	
+	cout << "\n\nmemória enviada: \n";
+	print_bytes(buffer, header_size);
+	cout << "\n\nsending: \n";
+	struct packet* header;
+	header = (packet*)malloc(header_size);
+	memcpy(&header->type, &buffer[0], 2);
+	memcpy(&header->seqn, &buffer[2], 2);
+	memcpy(&header->total_size, &buffer[4], 4);
+	memcpy(&header->length, &buffer[8], 2);
+	cout << "type: " << header->type << endl;
+	cout << "seqn: " << header->seqn << endl;
+	cout << "total_size: " << header->total_size << endl;
+	cout << "payload_size: " << header->length << endl << endl;
+	
 	// send header
 	/* write in the socket */
 	int bytes_sent = 0;
@@ -243,7 +257,7 @@ int main(int argc, char *argv[])
     // SEND FILE
     //------------------------------------------------------------------------
 
-    FILE *fp = fopen("/home/carol/sync_dir_bla/teste.txt", "r");
+    FILE *fp = fopen("/home/alack/Downloads/sync_dir_vinicius/teste.txt", "r");
     
     // Get the size of the file
     fseek(fp, 0 , SEEK_END);
@@ -252,7 +266,7 @@ int main(int argc, char *argv[])
     fseek(fp, 0 , SEEK_SET);
 
     //SEND FILE SEM PACOTES
-    char socorro[502];
+    /*char socorro[502];
     bzero(socorro, 502);
 
     size_t bytes_read_from_file;
@@ -270,16 +284,16 @@ int main(int argc, char *argv[])
     
     printf("\nEnviou essa bagaça\n");
     cout << "\nBytes read from file: " << bytes_read_from_file;
-    cout << "\nBytes sent: " << bytes_sent;
+    cout << "\nBytes sent: " << bytes_sent;*/
 
 
     // SEND FILE POR PACOTES
-/*
+
     uint16_t type = 0;
     
-    if(total_payload_size > payload_size)
+    if(total_payload_size > payload_size)// If the data is too large to send in one go, divide it into separate packets.
     {
-        // If the data is too large to send in one go, divide it into separate packets.
+        // Get the number of packets necessary (total_size)
         float total_size_f = (float)total_payload_size/(float)payload_size;
         int total_size = total_size_f;
         if (total_size_f > total_size)
@@ -288,7 +302,8 @@ int main(int argc, char *argv[])
         
         int i;
         int total_bytes_sent = 0;
-        cout << "\n\nenviando: " << endl << (char*)buffer << endl;
+        cout << "\n\nenviando: " << endl;
+    	printf("%.*s\n", payload_size, buffer);
         
         // Send each packet
         for(i=1; i<=total_size; i++)
@@ -327,7 +342,10 @@ int main(int argc, char *argv[])
             total_bytes_sent += bytes_sent;
             cout << "\n\nHEADER!\n";
             cout << "bytes sent: " << bytes_sent << endl;
-            cout << "seqn: " << pkt.seqn << endl;
+	        cout << "type: " << pkt.type;
+	        cout << "\nseqn: " << pkt.seqn;
+	        cout << "\ntotal_size: " << pkt.total_size;
+	        cout << "\npayload_size: " << pkt.length << endl;
             
             //------------------------------------------------------------------------
 	        // SEND PAYLOAD
@@ -343,7 +361,8 @@ int main(int argc, char *argv[])
             }
             total_bytes_sent += bytes_sent;
             cout << "PACKET!\n";
-            cout << "content: " << endl << pkt._payload << endl;
+	        cout << "\npayload(char*): ";
+	        printf("%.*s\n", payload_size, pkt._payload);
             cout << "bytes sent: " << bytes_sent << endl;
             //------------------------------------------------------------------------
         }
@@ -396,7 +415,7 @@ int main(int argc, char *argv[])
         //------------------------------------------------------------------------
     }
     //------------------------------------------------------------------------
-*/
+
 	close(sockfd);
     return 0;
 }

@@ -57,8 +57,9 @@ void *Communication_server::accept_connections()
 		this->username = connected_clients[0].get_username();
 		
 		// Create client folder, if it doesn't already exist
-		//create_folder("/home/"+connected_clients[connected_clients.size()-1].get_username()+"_syncdir");
+		create_folder("/home/"+connected_clients[connected_clients.size()-1].get_username()+"_syncdir");
 
+        // Create the thread for this client
         pthread_create(&client_thread, NULL, receive_commands_helper, &args);
         pthread_join(client_thread,NULL);
     //}
@@ -69,29 +70,29 @@ packet* Communication_server::receive_header(int sockfd)
 {
 	int bytes_received=0;
     bzero(buffer, header_size);
-	cout << "\nbytes lidos: "<<bytes_received<<endl;
+	cout << "\n\nbytes lidos: "<<bytes_received;
     while(bytes_received < header_size)
     {
-        cout << "\n\nsockfd = " << sockfd << "\n\n";
+        //cout << "\n\nsockfd = " << sockfd << "\n\n";
         /* read from the socket */
         int n = read(sockfd, buffer, header_size);
         if (n < 0)
             printf("ERROR reading from socket");
             
         bytes_received+=n;
-		cout << "\nbytes lidos: "<<bytes_received<<endl;
+		cout << "\nbytes lidos: "<<bytes_received;
 	}
 	// Bytes from buffer[4] to buffer[7] are the size of _payload
 	struct packet* header;
 	header = (packet*)malloc(header_size);
-	memcpy(&header->type, &buffer, 2);
+	memcpy(&header->type, &buffer[0], 2);
 	memcpy(&header->seqn, &buffer[2], 2);
 	memcpy(&header->total_size, &buffer[4], 4);
 	memcpy(&header->length, &buffer[8], 2);
-	cout << "\n\ntype: " << header->type << endl;
-	cout << "\n\nseqn: " << header->seqn << endl;
-	cout << "\n\ntotal_size: " << header->total_size << endl;
-	cout << "\n\npayload_size: " << header->length << endl << endl;
+	cout << "\ntype: " << header->type;
+	cout << "\nseqn: " << header->seqn;
+	cout << "\ntotal_size: " << header->total_size;
+	cout << "\npayload_size: " << header->length << endl;
 	
 	return header;
 }
@@ -109,11 +110,20 @@ packet* Communication_server::receive_payload(int sockfd)
             printf("ERROR reading from socket");
             
         bytes_received+=n;
-		cout << "\nbytes lidos: "<<bytes_received<<endl;
+		//cout << "\nbytes lidos: "<<bytes_received<<endl;
 	}
 	pkt->_payload = (const char*)buffer;
-	cout << "\npayload: " << *pkt->_payload << endl;
-	
+	if(pkt->type != 1){ // If the packet is not a command
+	    cout << "\npayload(char*): ";
+	    printf("%.*s\n", max_payload, pkt->_payload);
+    }
+    else{ // If the packet is a command
+	    cout << "payload(int): ";
+        int command;
+        memcpy(&command, pkt->_payload, pkt->length);
+        cout << command;
+    }
+    cout << endl << endl;
 	return pkt;
 }
 
@@ -140,9 +150,9 @@ void *Communication_server::receive_commands(int sockfd)
                 string path = "/home/" + username + "_syncdir/" + receive_payload(sockfd)->_payload;
                 cout << "String path: " << path;
                 char* file = receive_data(sockfd, path);
-                printf("recebeu o arquivo \n");
+                /*printf("recebeu o arquivo \n");
                 long file_size = strlen(file);
-                create_file(path, file, file_size);
+                create_file(path, file, file_size);*/
                 //printf("criou o arquivo-path \n");
                 
             }
@@ -328,23 +338,35 @@ char* Communication_server::receive_data(int sockfd)
 // AQUI SEM PACOTES
 // DANDO SEGMENTATION FAULT QUE DELICIA
 char* Communication_server::receive_data(int sockfd, string path) {
-    FILE *fp = fopen("/home/carol/sync_dir_bla/teste.txt", "r");
+    FILE *fp = fopen(path.c_str(), "w");
+    if(fp==NULL)
+        cout << "\nERROR OPENING " << path << endl; 
 
-    // Get the size of the file
-    fseek(fp, 0 , SEEK_END);
-    long total_payload_size = ftell(fp);
+    // Get the number of packets to be received
+    // To do that, we must receive the first packet
+    struct packet* pkt = receive_payload(sockfd);
+    uint32_t total_size = pkt->total_size;
+    cout << "\n\nTHE SERVER WILL RECEIVE " << total_size << " PACKETS!\n";
+    // Write the first payload to the file
+    ssize_t bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
+    if (bytes_written_to_file < pkt->length)
+        cout << "\nERROR WRITING TO " << path << endl; 
+    
+    // Receive all the [total_size] packets
+    // It starts at 2 because the first packet has already been received
+    int i;
+    for(i=2; i<=total_size; i++)
+    {
+        // Receive payload
+        pkt = receive_payload(sockfd);
+        // Write it to the file
+        bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
+        if (bytes_written_to_file < pkt->length)
+            cout << "\nERROR WRITING TO " << path << endl; 
+    }
+    
 
-    // Go back to the beggining
-    fseek(fp, 0 , SEEK_SET);
-    cout << "\n\nTOTAL PAYLOAD SIZE: " << total_payload_size;
-    char buffer[502];
-    bzero(buffer, 502);
-    printf("\nvai abrir essa merda\n");
-    FILE *file = fopen(path.c_str(), "wb");
-    printf("ABRIU O ARQUIVO \n");
-
-    size_t bytes_received = 0;
-
+    /*size_t bytes_received = 0;
     while (bytes_received < total_payload_size) {
         ssize_t bytes_read_from_socket = 0;
         printf("\nFIRST WHILE");
@@ -363,7 +385,7 @@ char* Communication_server::receive_data(int sockfd, string path) {
             }
         }
         printf("life is beautiful\n");
-    }
+    }*/
 }
 
 char* Communication_server::read_file(string path)

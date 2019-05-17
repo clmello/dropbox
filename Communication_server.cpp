@@ -130,8 +130,9 @@ packet* Communication_server::receive_payload(int sockfd)
 
 void *Communication_server::receive_commands(int sockfd)
 {
-    //while(true) // TODO: ENQUANTO USUARIO NÃO FECHA
-    //{
+    bool _exit = false;
+    while(!_exit) // TODO: ENQUANTO USUARIO NÃO FECHA
+    {
         // Wait for a command
         cout << "\nwaiting for command\n";
         struct packet *pkt = receive_payload(sockfd);
@@ -148,35 +149,72 @@ void *Communication_server::receive_commands(int sockfd)
             case 1: // Upload to server
             {
                 cout << "\ncommand 1 received\n";
+                
                 string path = "/home/" + username + "_syncdir/" + receive_payload(sockfd)->_payload;
                 cout << "String path: " << path;
-                char* file = receive_file(sockfd, path);
+                receive_file(sockfd, path);
                 /*printf("recebeu o arquivo \n");
                 long file_size = strlen(file);
                 create_file(path, file, file_size);*/
                 //printf("criou o arquivo-path \n");
                 
+                break;
             }
             case 2: // Download from server
             {
+                cout << "\ncommand 2 received\n";
+                
+                break;
             }
             case 3: // Delete file
             {
+                cout << "\ncommand 2 received\n";
+                
+                break;
             }
             case 4: // List server
             {
+                cout << "\ncommand 4 received\n";
+                
+                string path = "/home/" + username + "_syncdir/";
+                DIR *fileDir;
+                struct dirent *lsdir;
+
+                fileDir = opendir(path.c_str());
+
+                string return_str;
+                while ((lsdir = readdir(fileDir)) != NULL)
+                {
+                    if(lsdir->d_name[0] != '.')
+                        return_str = return_str + lsdir->d_name + " ";
+                }
+                return_str.pop_back();
+
+                closedir(fileDir);
+                
+                send_string(sockfd, return_str);
+        
+                break;
             }
             case 6: // Get sync_dir
             {
+                cout << "\ncommand 6 received\n";
+                
+                break;
             }
             case 7: // Exit
             {
+                cout << "\ncommand 7 received\n";
+                
+                _exit = true;
+                
+                break;
             }
             default:
             {
             }
         }
-	//}
+	}
 }
 
 void *Communication_server::receive_commands_helper(void* void_args)
@@ -186,10 +224,94 @@ void *Communication_server::receive_commands_helper(void* void_args)
     return 0;
 }
 
+void Communication_server::send_string(int sockfd, string str)
+{
+    // If the string is too large to send in one go, divide it into separate packets.
+    // Get the number of packets necessary (total_size)
+    float total_size_f = (float)str.size()/(float)max_payload;
+    int total_size = total_size_f;
+    if (total_size_f > total_size)
+        total_size ++;
+    cout << "\n\ntotal size: " << total_size;
+    
+    int i;
+    int total_bytes_sent = 0;
+    char *str_buff = (char*)malloc(str.size());
+    cout << "\n\nenviando: " << endl;
+	printf("%.*s\n", (int)str.size(), str_buff);
+    
+    // Send each packet
+    // If only one packet will be sent, the program will go through the loop only once
+    for(i=1; i<=total_size; i++)
+    {
+        // Create the packet that will be sent
+        struct packet pkt;
+        pkt.type = 0;
+        pkt.seqn = i;
+        pkt.total_size = total_size;
+        
+        // If the chunk of the file that will be sent is smaller
+        //than the max payload size, send only the size needed
+        if(max_payload > str.size() - (total_bytes_sent - header_size*(i-1)))
+            pkt.length = str.size() - (total_bytes_sent - header_size*(i-1));
+        else
+            pkt.length = max_payload;
+        
+        cout << endl << total_bytes_sent << " bytes have been sent";
+        cout << endl << str.size() - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
+        
+        // Read pkt.length characters from the string
+        //and save it to pkt._payload
+        strcpy(str_buff, str.substr((i-1)*max_payload, pkt.length).c_str());
+        pkt._payload = str_buff;
+        
+        // Point buffer to pkt
+        buffer = (char*)&pkt;
+        
+        //------------------------------------------------------------------------
+        // SEND HEADER
+        //------------------------------------------------------------------------
+        // write in the socket
+        int bytes_sent = 0;
+        while (bytes_sent < header_size)
+        {
+            int n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
+            if (n < 0) 
+	            printf("ERROR writing to socket\n");
+	        bytes_sent += n;
+        }
+        total_bytes_sent += bytes_sent;
+        cout << "\n\nHEADER!\n";
+        cout << "bytes sent: " << bytes_sent << endl;
+        cout << "type: " << pkt.type;
+        cout << "\nseqn: " << pkt.seqn;
+        cout << "\ntotal_size: " << pkt.total_size;
+        cout << "\npayload_size: " << pkt.length << endl;
+        
+        //------------------------------------------------------------------------
+        // SEND PAYLOAD
+        //------------------------------------------------------------------------
+        // write in the socket
+        bytes_sent = 0;
+        while (bytes_sent < pkt.length)
+        {
+            int n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+            if (n < 0) 
+	            printf("ERROR writing to socket\n");
+	        bytes_sent += n;
+        }
+        total_bytes_sent += bytes_sent;
+        cout << "PACKET!\n";
+        cout << "\npayload(char*): ";
+        printf("%.*s\n", max_payload, pkt._payload);
+        cout << "bytes sent: " << bytes_sent << endl;
+        //------------------------------------------------------------------------
+    }
+}
+
 void Communication_server::send_file(int sockfd, string file_name, string path)
 {        
     // To send a file, you must first send the file name, and then the file
-    // Of course, you also need to send the upload command before the file name
     //------------------------------------------------------------------------
     // SEND FILENAME
     //------------------------------------------------------------------------
@@ -333,7 +455,7 @@ void Communication_server::send_file(int sockfd, string file_name, string path)
 }
 
 
-char* Communication_server::receive_file(int sockfd, string path) {
+void Communication_server::receive_file(int sockfd, string path) {
     FILE *fp = fopen(path.c_str(), "w");
     if(fp==NULL)
         cout << "\nERROR OPENING " << path << endl; 

@@ -48,9 +48,10 @@ class Communication_server
 		
 		packet* receive_payload(int sockfd);// Receives the _payload of the packet from the client and returns a packet struct containing the _payload
 		packet* receive_header(int sockfd);	// Receives the header of the packet from the client and returns a packet struct containing the header
-		void send_file(int sockfd, string file_name, string path);
-		char* receive_file(int sockfd, string path);
-		char* read_file(string path);
+		void send_file(int sockfd, string file_name, string path); // Send a file to the client
+		void send_string(int sockfd, string str); // Send a string to the client
+		void receive_file(int sockfd, string path); // Receive a file from the client
+		char* read_file(string path); // Read a local file
 		
 		int create_folder(string path);
 		int delete_folder(string path);

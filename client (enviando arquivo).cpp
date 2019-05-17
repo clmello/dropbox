@@ -11,9 +11,11 @@
 
 #define PORT 4001
 
+// Essas coisas globais precisam ser variáveis privadas da classe
 int payload_size = 502;
 int header_size = 10;
 int packet_size = header_size + payload_size;
+char* buffer = (char*)malloc(header_size);
 
 using namespace std;
 
@@ -56,6 +58,68 @@ FILE* read_file(string path)
     return fp;
 }
 
+packet* receive_header(int sockfd)
+{
+	int bytes_received=0;
+    bzero(buffer, header_size);
+	cout << "\n\nbytes lidos: "<<bytes_received;
+    while(bytes_received < header_size)
+    {
+        //cout << "\n\nsockfd = " << sockfd << "\n\n";
+        /* read from the socket */
+        int n = read(sockfd, buffer, header_size);
+        if (n < 0)
+            printf("ERROR reading from socket");
+            
+        bytes_received+=n;
+		cout << "\nbytes lidos: "<<bytes_received;
+	}
+	// Bytes from buffer[4] to buffer[7] are the size of _payload
+	struct packet* header;
+	header = (packet*)malloc(header_size);
+	memcpy(&header->type, &buffer[0], 2);
+	memcpy(&header->seqn, &buffer[2], 2);
+	memcpy(&header->total_size, &buffer[4], 4);
+	memcpy(&header->length, &buffer[8], 2);
+	cout << "\ntype: " << header->type;
+	cout << "\nseqn: " << header->seqn;
+	cout << "\ntotal_size: " << header->total_size;
+	cout << "\npayload_size: " << header->length << endl;
+	
+	return header;
+}
+
+packet* receive_payload(int sockfd)
+{
+    struct packet *pkt = receive_header(sockfd);
+	int bytes_received=0;
+    bzero(buffer, pkt->length);
+    while(bytes_received < pkt->length)
+    {
+        // read from the socket
+        int n = read(sockfd, buffer, pkt->length-bytes_received);
+        if (n < 0)
+            printf("ERROR reading from socket");
+            
+        bytes_received+=n;
+		//cout << "\nbytes lidos: "<<bytes_received<<endl;
+	}
+	cout << "\nbytes lidos: "<<bytes_received;
+	pkt->_payload = (const char*)buffer;
+	if(pkt->type != 1){ // If the packet is not a command
+	    cout << "\npayload(char*): ";
+	    printf("%.*s\n", payload_size, pkt->_payload);
+    }
+    else{ // If the packet is a command
+	    cout << "payload(int): ";
+        int command;
+        memcpy(&command, pkt->_payload, pkt->length);
+        cout << command;
+    }
+    cout << endl << endl;
+	return pkt;
+}
+
 
 
 
@@ -96,7 +160,6 @@ int main(int argc, char *argv[])
 	if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
         printf("ERROR connecting\n");
 	
-    char* buffer;
     char* file_buffer = (char*)malloc(payload_size);
     const char* payload = (char*)"bla";
     
@@ -126,7 +189,6 @@ int main(int argc, char *argv[])
     //that pkt._payload points to.
     
 	// copy pkt to buffer
-	buffer = (char*)malloc(header_size);
 	buffer = (char*)&pkt;
 	
 	cout << "\n\nmemória enviada: \n";
@@ -171,6 +233,10 @@ int main(int argc, char *argv[])
     
     
     
+    
+    
+    // TESTING LIST_SERVER
+    
     //------------------------------------------------------------------------
     // SEND COMMAND
     //------------------------------------------------------------------------
@@ -181,7 +247,7 @@ int main(int argc, char *argv[])
     pkt.seqn = 1;
     pkt.total_size = 1;
     pkt.length = sizeof(int);
-    int command = 1;
+    int command = 4;
 	pkt._payload = (const char*)&command;
 	// send header
 	/* write in the socket */
@@ -206,6 +272,56 @@ int main(int argc, char *argv[])
 		bytes_sent += n;
     }
     cout << "bytes sent: " << bytes_sent << endl;
+    //------------------------------------------------------------------------
+    
+    //------------------------------------------------------------------------
+    // RECEIVE STRING
+    //------------------------------------------------------------------------
+    // This was created to test receiving a string
+    cout << "\n\nlist_server: " << receive_payload(sockfd)->_payload << endl << endl;
+    //------------------------------------------------------------------------
+    
+    
+    
+    
+    
+    // TESTING FILE UPLOAD
+    
+    //------------------------------------------------------------------------
+    // SEND COMMAND
+    //------------------------------------------------------------------------
+    // This send was created to test sending an integer.
+    
+    pkt.type = 1;
+    pkt.seqn = 1;
+    pkt.total_size = 1;
+    pkt.length = sizeof(int);
+    command = 1;
+	pkt._payload = (const char*)&command;
+	// send header
+	/* write in the socket */
+	buffer = (char*)&pkt;
+	bytes_sent = 0;
+	while (bytes_sent < header_size)
+	{
+	    n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
+        if (n < 0) 
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+    cout << "bytes sent: " << bytes_sent << endl;
+    //send payload
+	/* write in the socket */
+	bytes_sent = 0;
+	while (bytes_sent < pkt.length)
+	{
+	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+        if (n < 0) 
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+    cout << "bytes sent: " << bytes_sent << endl;
+    sleep(5);
     //------------------------------------------------------------------------
     
     
@@ -351,6 +467,49 @@ int main(int argc, char *argv[])
         cout << "bytes sent: " << bytes_sent << endl;
         //------------------------------------------------------------------------
     }
+    
+    
+    
+    
+    
+    // TESTING EXIT
+    
+    //------------------------------------------------------------------------
+    // SEND COMMAND
+    //------------------------------------------------------------------------
+    // This send was created to test sending an integer.
+    
+    sleep(5);
+    pkt.type = 1;
+    pkt.seqn = 1;
+    pkt.total_size = 1;
+    pkt.length = sizeof(int);
+    command = 7;
+	pkt._payload = (const char*)&command;
+	// send header
+	/* write in the socket */
+	buffer = (char*)&pkt;
+	bytes_sent = 0;
+	while (bytes_sent < header_size)
+	{
+	    n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
+        if (n < 0) 
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+    cout << "bytes sent: " << bytes_sent << endl;
+    //send payload
+	/* write in the socket */
+	bytes_sent = 0;
+	while (bytes_sent < pkt.length)
+	{
+	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+        if (n < 0) 
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+    cout << "bytes sent: " << bytes_sent << endl;
+    //------------------------------------------------------------------------
     
     fclose(fp);
 	close(sockfd);

@@ -55,9 +55,8 @@ class Communication_server
 		
 		int create_folder(string path);
 		int delete_folder(string path);
-		int create_file(string path, char* file, long file_size);
 		int delete_file(string path);
-		long get_file_size(string path);
+		long get_file_size(FILE *fp);
 
 
 		struct th_args{

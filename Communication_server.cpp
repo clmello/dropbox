@@ -170,8 +170,7 @@ void *Communication_server::receive_commands(int sockfd)
                 
                 string path = "/home/" + username + "_syncdir/" + receive_payload(sockfd)->_payload;
                 cout << "String path: " << path;
-                if(remove(path.c_str()) != 0 )
-                    cout << "Error deleting file";
+                delete_file(path);
                 
                 break;
             }
@@ -366,9 +365,7 @@ void Communication_server::send_file(int sockfd, string file_name, string path)
     
     // Get the size of the file
     fseek(fp, 0 , SEEK_END);
-    long total_payload_size = ftell(fp);
-    // Go back to the beggining
-    fseek(fp, 0 , SEEK_SET);
+    long total_payload_size = get_file_size(fp);
     
     // The type of the packet being sent is 0 (data)
     uint16_t type = 0;
@@ -522,24 +519,21 @@ int Communication_server::delete_folder(string path)
     return 0;
 }
 
-int Communication_server::create_file(string path, char* file, long file_size)
+int Communication_server::delete_file(string path)
 {
-    FILE* fp = fopen(path.c_str(), "w");
-    
-    int i;
-    for(i=0; i<file_size; i++)
-        fwrite(&file[i], 1, 8, fp);
-        
-    fclose(fp);
+    int error = 0;
+    error = remove(path.c_str());
+    if(error != 0)
+        cout << "Error deleting file";
+    return error;
 }
 
-long Communication_server::get_file_size(string path)
+long Communication_server::get_file_size(FILE *fp)
 {
-    FILE* fp = fopen(path.c_str(), "r");
-    if(fp==NULL)
-        cout << "\nError opening file " << path << endl;
+    // Get file size
     fseek(fp, 0 , SEEK_END);
     long size = ftell(fp);
+    // Go back to the beginning
     fseek(fp, 0 , SEEK_SET);
     
     fclose(fp);

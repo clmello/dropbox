@@ -76,15 +76,15 @@ packet* Communication_server::receive_header(int sockfd)
     {
         //cout << "\n\nsockfd = " << sockfd << "\n\n";
         /* read from the socket */
-        cout << "\nBYTES_LIDOS ANTES DO READ: " << bytes_received;
+        //cout << "\nBYTES_LIDOS ANTES DO READ: " << bytes_received;
         int n = read(sockfd, buffer, header_size-bytes_received);
-        cout << "\nBYTES_LIDOS DEPOIS DO READ: " << bytes_received;
-        cout << "\nN DEPOIS DO READ: " << n;
+        //cout << "\nBYTES_LIDOS DEPOIS DO READ: " << bytes_received;
+        //cout << "\nN DEPOIS DO READ: " << n;
         if (n < 0)
             printf("ERROR reading from socket");
             
         bytes_received+=n;
-		cout << "\nbytes lidos: "<<bytes_received;
+		//cout << "\nbytes lidos: "<<bytes_received;
 	}
 	// Bytes from buffer[4] to buffer[7] are the size of _payload
 	memcpy(&header->type, &buffer[0], 2);
@@ -116,7 +116,7 @@ packet* Communication_server::receive_payload(int sockfd)
 	}
 	cout << "\nbytes lidos: "<<bytes_received;
 	pkt->_payload = (const char*)buffer;
-	if(pkt->type != 1){ // If the packet is not a command
+	/*if(pkt->type != 1){ // If the packet is not a command
 	    cout << "\npayload(char*): ";
 	    printf("%.*s\n", max_payload, pkt->_payload);
     }
@@ -125,7 +125,7 @@ packet* Communication_server::receive_payload(int sockfd)
         int command;
         memcpy(&command, pkt->_payload, pkt->length);
         cout << command;
-    }
+    }*/
     cout << endl << endl;
 	return pkt;
 }

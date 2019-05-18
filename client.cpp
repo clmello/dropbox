@@ -14,9 +14,6 @@ using namespace boost::filesystem;
 
 g++ -o client client.cpp -lboost_system -> comando para boost funcionar */
 
-// vai ser global porque foi o que deu pra fazer
-Communication_client communication;
-pthread_t user_interface_thread;
 
 Client::Client(std::string username, std::string hostname, int port){
     this->username = username;
@@ -36,6 +33,10 @@ std::string Client::getHostname() {
 
 int Client::getPort() {
 	return this->port;
+}
+
+pthread_t* Client::getCheckFilesThread() {
+    return &check_files_thread;
 }
 
 void Client::setIsLogged(bool isLogged) {
@@ -189,11 +190,8 @@ void *Client::check_files_loop() {
     }   
 }
 
-void *Client::check_files_helper(void* void_args) {
-    th_args* args = (th_args*) void_args;
-    ((Client*)args->obj)->check_files_loop();
-
-    return 0;
+void *Client::check_files_helper(void* context) {
+    return ((Client *)context)->check_files_loop();
 }
 
 // Pretendo mudar pra outra classe tipo um Folder ou Util
@@ -215,14 +213,6 @@ std::string Client::createSyncDir() {
         std::cout << "Didn't found folder,\ncreating one:\n\t" << dir << std::endl;
     }
 	return dir;
-}
-
-void *Client::initClientThreads() {
-    struct th_args args;
-    args.obj = this;
-
-    pthread_create(&check_files_thread, NULL, check_files_helper, &args);
-    //pthread_create(&user_interface_thread, NULL, user_interface_helper, &args);
 }
 
 void Client::userInterface() {
@@ -287,7 +277,7 @@ void Client::userInterface() {
         }
         else if(command == "list_client") {
             std::cout << "List Client \n";
-            communication.send_command(5);
+            //communication.send_command(5); // NÃO PRECISA ENVIAR ESSE COMANDO PARA O SERVIDOR
              DIR *fileDir; 
             struct dirent *lsdir;
 
@@ -295,7 +285,8 @@ void Client::userInterface() {
 
             while ((lsdir = readdir(fileDir)) != NULL)
             {
-                printf("%s\n", lsdir->d_name);
+                if(lsdir->d_name[0] != '.') // Ignora . e ..
+                    printf("%s\n", lsdir->d_name);
             }
 
             closedir(fileDir);
@@ -308,12 +299,17 @@ void Client::userInterface() {
         else if(command == "exit") {
             communication.send_command(7);
             running = false;
+            pthread_join(this->check_files_thread, NULL);
             // metodo pra exit
         }
         else {
-            std::cout << "Comando não está entre as opções válidas";
+            std::cout << "Comando não está entre as opções válidas\n";
         }
     }
+}
+
+Communication_client* Client::getCommunication() {
+    return &communication;
 }
 
 int main(int argc, char **argv) {
@@ -330,7 +326,9 @@ int main(int argc, char **argv) {
 	Client client = Client(username, host, port);
 
 	/*** CONEXÃO COM O SERVIDOR ***/
-	bool connected = communication.connect_client_server(client);
+	bool connected = client.getCommunication()->connect_client_server(client);
+	// Antes era:
+	// bool connected = communication.connect_client_server(client);
 /*
     if(!connected) {
         std::cerr << "ERROR, can't connect with server \n";
@@ -345,7 +343,7 @@ int main(int argc, char **argv) {
     client.setRunning(true);
 
     // chama método queinicializa thread que fica verificando se arquivos foram modificados
-    client.initClientThreads();
+    pthread_create(client.getCheckFilesThread(), NULL, &Client::check_files_helper, &client);
 
     printf("Well, hi\n");
     client.userInterface();

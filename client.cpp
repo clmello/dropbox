@@ -16,7 +16,7 @@ g++ -o client client.cpp -lboost_system -> comando para boost funcionar */
 
 // vai ser global porque foi o que deu pra fazer
 Communication_client communication;
-pthread_t check_files_thread;
+pthread_t user_interface_thread;
 
 Client::Client(std::string username, std::string hostname, int port){
     this->username = username;
@@ -54,17 +54,7 @@ void Client::setRunning(bool running) {
     this->running = running;
 }
 
-/*
-void Client::setSockfd(int sockfd) {
-    this->sockfd = sockfd;
-}
-
-void Client::getSockfd() {
-    return this->sockfd;
-}
-*/
-
-void *Client::printWatchedFies() {
+void Client::printWatchedFies() {
     if(this->watched_files.size() > 0) {
         std::cout << "\n\nWATCHED FILES:\n";
         for(unsigned int i = 0; i < this->watched_files.size(); i++){
@@ -78,7 +68,9 @@ void *Client::printWatchedFies() {
 void *Client::check_files_loop() {
     // enquanto a thread está aberta
     printf("running: %d \n", this->running);
+    printf("Entrei na check_files\n");
     while(this->running) {
+        printf("running: %d \n", this->running);
         int err = 0;
     
         // If files are already being watched
@@ -225,14 +217,12 @@ std::string Client::createSyncDir() {
 	return dir;
 }
 
-void *Client::initSyncClientThread() {
-    printf("Initialize client file syncronization thread\n");
+void *Client::initClientThreads() {
     struct th_args args;
     args.obj = this;
 
     pthread_create(&check_files_thread, NULL, check_files_helper, &args);
-    pthread_join(check_files_thread, NULL);
-
+    //pthread_create(&user_interface_thread, NULL, user_interface_helper, &args);
 }
 
 void Client::userInterface() {
@@ -241,11 +231,14 @@ void Client::userInterface() {
     std::string command;
     std::string argument;
 
+    std::cout << "hello to na user interface, digite algo pls\n";
+
     while(running) {
        std::getline(std::cin, input);
         command = input.substr(0, input.find(" "));
         input = input.substr(input.find(" ") + 1, input.length());
 
+/*
         if (input != "")
             argument = input;
 
@@ -253,7 +246,7 @@ void Client::userInterface() {
             argument = "";
 
         input = "";
-
+*/
 
         if(command == "upload") {
             printf("entrei no upload\n");
@@ -268,7 +261,7 @@ void Client::userInterface() {
         }
         else if(command == "delete") {
             std::cout << "Delete \n";
-
+/*
             if (argument == "")
                 std::cout << "Delete needs argument <file>";
 
@@ -284,8 +277,8 @@ void Client::userInterface() {
                     std::cout << "Deleted file: " << fileName << "\n";
                 }
             }
-
-                    communication.send_command(3);
+*/
+            communication.send_command(3);
         }
         else if(command == "list_server") {
             std::cout << "List Server \n";
@@ -338,28 +331,26 @@ int main(int argc, char **argv) {
 
 	/*** CONEXÃO COM O SERVIDOR ***/
 	bool connected = communication.connect_client_server(client);
-
-    /*
+/*
     if(!connected) {
         std::cerr << "ERROR, can't connect with server \n";
         std::exit(1);
     }
-    */
-    
+*/   
     /*** SINCRONIZAÇÃO COM O SERVIDOR ***/
     // Aqui verifica se já existe o diretório, se não existe então cria
     std::string dir = client.createSyncDir();
 	client.setDir(dir);
 
-    // chama método queinicializa thread que fica verificando se arquivos foram modificados
     client.setRunning(true);
 
-    // THREAD NOT WORKING WHY
-    //client.initSyncClientThread();
+    // chama método queinicializa thread que fica verificando se arquivos foram modificados
+    client.initClientThreads();
 
-    client.setIsLogged(true);
-
-    /*** INTERFACE COM O USUARIO ***/
+    printf("Well, hi\n");
     client.userInterface();
+
+    //pthread_join(check_files_thread, NULL);
+    //pthread_join(user_interface_thread, NULL);
     //pthread_cancel(check_files_thread);
 }

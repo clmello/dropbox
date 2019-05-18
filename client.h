@@ -16,11 +16,13 @@ private:
     struct file{time_t mtime; std::string name;};
     std::vector<file> watched_files;
 
+    pthread_t check_files_thread;
+
+public:
     struct th_args{
 		void* obj = NULL;
     };
 
-public:
     Client(std::string username, std::string hostname, int port);
 
     // gets e sets
@@ -34,11 +36,12 @@ public:
     void setRunning(bool running);
 
     // rest
-    void *printWatchedFies();
+    void printWatchedFies();
     void *check_files_loop();
     static void *check_files_helper(void* void_args);
     std::string createSyncDir();
-    void *initSyncClientThread();
+    void *initClientThreads();
+    //static void *user_interface_helper(void* void_args);
     void userInterface();
 };
 

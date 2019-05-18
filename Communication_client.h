@@ -21,6 +21,7 @@ private:
 	int header_size;
 	int packet_size;
 	int sockfd;
+	char* buffer;
 
 public:
 	typedef	struct	packet{
@@ -31,9 +32,13 @@ public:
 		const char*	_payload;		//Dados do pacote
 	} packet;
 
+	packet pkt;
 	Communication_client();
 	bool connect_client_server(Client client);
 	void send_command(int command);
+	void upload_command(int command, std::string filename, std::string path);
+	void send_filename(std::string filename);
+	void send_file(std::string filename, std::string path);
 };
 
 #endif // COMMUNICATION_CLIENT_H

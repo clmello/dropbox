@@ -11,6 +11,7 @@ private:
 	int port;    
 	bool isLogged;
     std::string dir;
+    int command;
 
     bool running;
     struct file{time_t mtime; std::string name;};
@@ -34,6 +35,8 @@ public:
     void setIsLogged(bool isLogged);
     bool getIsLogged();
     void setDir(std::string dir);
+    void setCommand(int command);
+    int getCommand();
     void setRunning(bool running);
     pthread_t* getCheckFilesThread();
     //Communication_client* getCommunication();

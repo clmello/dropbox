@@ -21,6 +21,7 @@ Client::Client(std::string username, std::string hostname, int port){
 	this->port = port;
     this->isLogged = false;
     this->dir = " ";
+    this->command = 0;
 }
 
 std::string Client::getUsername() {
@@ -51,6 +52,14 @@ void Client::setDir(std::string dir) {
     this->dir = dir;
 }
 
+int Client::getCommand() {
+    return this->command;
+}
+
+void Client::setCommand(int command) {
+    this->command = command;
+}
+
 void Client::setRunning(bool running) {
     this->running = running;
 }
@@ -68,10 +77,7 @@ void Client::printWatchedFies() {
 
 void *Client::check_files_loop() {
     // enquanto a thread está aberta
-    printf("running: %d \n", this->running);
-    printf("Entrei na check_files\n");
     while(this->running) {
-        printf("running: %d \n", this->running);
         int err = 0;
     
         // If files are already being watched
@@ -221,36 +227,32 @@ void Client::userInterface() {
     std::string command;
     std::string argument;
 
-    std::cout << "hello to na user interface, digite algo pls\n";
+    std::cout << "Digite um dos comandos a seguir:\n\n";
+    std::cout << " upload <path/filename.ext>\n";
+    std::cout << " download <filename.ext>\n";
+    std::cout << " delete <filename.ext>\n";
+    std::cout << " list_server\n";
+    std::cout << " list_client\n";
+    std::cout << " get_sync_dir\n";
+    std::cout << " exit\n";
 
     while(running) {
        std::getline(std::cin, input);
         command = input.substr(0, input.find(" "));
         input = input.substr(input.find(" ") + 1, input.length());
 
-/*
-        if (input != "")
-            argument = input;
-
-        else
-            argument = "";
-
-        input = "";
-*/
-
         if(command == "upload") {
-            printf("entrei no upload\n");
-            std::cout << "Upload \n";
-            communication.send_command(1);
+            std::cout << "Upload " << input << "\n";
+            communication.upload_command(1, input, this->dir);
             // metodo pra upload
         }
         else if(command == "download") {
-            std::cout << "Download \n";
-            communication.send_command(2);
+            std::cout << "Download " << argument << "\n";
+            //communication.send_command(2);
             // metodo pra download
         }
         else if(command == "delete") {
-            std::cout << "Delete \n";
+            std::cout << "Delete " << argument << "\n";
 /*
             if (argument == "")
                 std::cout << "Delete needs argument <file>";
@@ -268,7 +270,7 @@ void Client::userInterface() {
                 }
             }
 */
-            communication.send_command(3);
+            //communication.send_command(3);
         }
         else if(command == "list_server") {
             std::cout << "List Server \n";
@@ -293,7 +295,7 @@ void Client::userInterface() {
         }
         else if(command == "get_sync_dir") {
             std::cout << "Get Sync Dir \n";
-            communication.send_command(6);
+            //communication.send_command(6);
             // metodo pra get_sync_dir
         }
         else if(command == "exit") {
@@ -332,12 +334,12 @@ int main(int argc, char **argv) {
     // Voltar pra essa questão de communication ser um argumento de client:
 	// bool connected = client.communication.connect_client_server(client);
 	bool connected = communication.connect_client_server(client);
-/*
+
     if(!connected) {
         std::cerr << "ERROR, can't connect with server \n";
         std::exit(1);
     }
-*/   
+
     /*** SINCRONIZAÇÃO COM O SERVIDOR ***/
     // Aqui verifica se já existe o diretório, se não existe então cria
     std::string dir = client.createSyncDir();

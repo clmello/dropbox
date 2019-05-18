@@ -58,7 +58,8 @@ void *Communication_server::accept_connections()
 		this->username = connected_clients[0].get_username();
 		
 		// Create client folder, if it doesn't already exist
-		create_folder("/home/"+connected_clients[connected_clients.size()-1].get_username()+"_syncdir");
+		string homedir = getenv("HOME");
+		create_folder(homedir+"/sync_dir_"+connected_clients[connected_clients.size()-1].get_username());
 
         // Create the thread for this client
         pthread_create(&client_thread, NULL, receive_commands_helper, &args);
@@ -69,6 +70,7 @@ void *Communication_server::accept_connections()
 
 packet* Communication_server::receive_header(int sockfd)
 {
+    cout << "\n\nENTREI NO RECEIVE_HEADER\n\n";
 	int bytes_received=0;
     bzero(buffer, header_size);
 	cout << "\n\nbytes lidos: "<<bytes_received;
@@ -76,10 +78,10 @@ packet* Communication_server::receive_header(int sockfd)
     {
         //cout << "\n\nsockfd = " << sockfd << "\n\n";
         /* read from the socket */
-        //cout << "\nBYTES_LIDOS ANTES DO READ: " << bytes_received;
+        cout << "\nBYTES_LIDOS ANTES DO READ: " << bytes_received;
         int n = read(sockfd, buffer, header_size-bytes_received);
-        //cout << "\nBYTES_LIDOS DEPOIS DO READ: " << bytes_received;
-        //cout << "\nN DEPOIS DO READ: " << n;
+        cout << "\nBYTES_LIDOS DEPOIS DO READ: " << bytes_received;
+        cout << "\nN DEPOIS DO READ: " << n;
         if (n < 0)
             printf("ERROR reading from socket");
             
@@ -101,6 +103,7 @@ packet* Communication_server::receive_header(int sockfd)
 
 packet* Communication_server::receive_payload(int sockfd)
 {
+    cout << "\n\nENTREI NO RECEIVE_PAYLOAD\n\n";
     struct packet *pkt = receive_header(sockfd);
 	int bytes_received=0;
     bzero(buffer, pkt->length);
@@ -152,7 +155,8 @@ void *Communication_server::receive_commands(int sockfd)
             {
                 cout << "\ncommand 1 received\n";
                 
-                string path = "/home/" + username + "_syncdir/" + receive_payload(sockfd)->_payload;
+                string path = getenv("HOME");
+                path = path + "/sync_dir_" + username;
                 cout << "String path: " << path;
                 receive_file(sockfd, path);
                 
@@ -168,7 +172,8 @@ void *Communication_server::receive_commands(int sockfd)
             {
                 cout << "\ncommand 2 received\n";
                 
-                string path = "/home/" + username + "_syncdir/" + receive_payload(sockfd)->_payload;
+                string path = getenv("HOME");
+                path = path + "/sync_dir_" + username;
                 cout << "String path: " << path;
                 delete_file(path);
                 
@@ -177,8 +182,9 @@ void *Communication_server::receive_commands(int sockfd)
             case 4: // List server
             {
                 cout << "\ncommand 4 received\n";
-                
-                string path = "/home/" + username + "_syncdir/";
+		        
+                string path = getenv("HOME");
+                path = path + "/sync_dir_" + username;
                 DIR *fileDir;
                 struct dirent *lsdir;
 

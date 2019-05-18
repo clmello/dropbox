@@ -191,20 +191,6 @@ int main(int argc, char *argv[])
 	// copy pkt to buffer
 	buffer = (char*)&pkt;
 	
-	cout << "\n\nmemória enviada: \n";
-	print_bytes(buffer, header_size);
-	cout << "\n\nsending: \n";
-	struct packet* header;
-	header = (packet*)malloc(header_size);
-	memcpy(&header->type, &buffer[0], 2);
-	memcpy(&header->seqn, &buffer[2], 2);
-	memcpy(&header->total_size, &buffer[4], 4);
-	memcpy(&header->length, &buffer[8], 2);
-	cout << "type: " << header->type << endl;
-	cout << "seqn: " << header->seqn << endl;
-	cout << "total_size: " << header->total_size << endl;
-	cout << "payload_size: " << header->length << endl << endl;
-	
 	// send header
 	/* write in the socket */
 	int bytes_sent = 0;

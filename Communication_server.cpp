@@ -155,10 +155,6 @@ void *Communication_server::receive_commands(int sockfd)
                 string path = "/home/" + username + "_syncdir/" + receive_payload(sockfd)->_payload;
                 cout << "String path: " << path;
                 receive_file(sockfd, path);
-                /*printf("recebeu o arquivo \n");
-                long file_size = strlen(file);
-                create_file(path, file, file_size);*/
-                //printf("criou o arquivo-path \n");
                 
                 break;
             }
@@ -171,6 +167,11 @@ void *Communication_server::receive_commands(int sockfd)
             case 3: // Delete file
             {
                 cout << "\ncommand 2 received\n";
+                
+                string path = "/home/" + username + "_syncdir/" + receive_payload(sockfd)->_payload;
+                cout << "String path: " << path;
+                if(remove(path.c_str()) != 0 )
+                    cout << "Error deleting file";
                 
                 break;
             }

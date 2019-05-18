@@ -13,7 +13,7 @@
 using namespace boost::filesystem;
 
 g++ -o client client.cpp -lboost_system -> comando para boost funcionar */
-
+Communication_client communication;
 
 Client::Client(std::string username, std::string hostname, int port){
     this->username = username;
@@ -308,9 +308,12 @@ void Client::userInterface() {
     }
 }
 
+/*
 Communication_client* Client::getCommunication() {
     return &communication;
 }
+*/
+
 
 int main(int argc, char **argv) {
 	if(argc < 4) {
@@ -326,9 +329,9 @@ int main(int argc, char **argv) {
 	Client client = Client(username, host, port);
 
 	/*** CONEXÃO COM O SERVIDOR ***/
-	bool connected = client.getCommunication()->connect_client_server(client);
-	// Antes era:
-	// bool connected = communication.connect_client_server(client);
+    // Voltar pra essa questão de communication ser um argumento de client:
+	// bool connected = client.communication.connect_client_server(client);
+	bool connected = communication.connect_client_server(client);
 /*
     if(!connected) {
         std::cerr << "ERROR, can't connect with server \n";
@@ -347,8 +350,4 @@ int main(int argc, char **argv) {
 
     printf("Well, hi\n");
     client.userInterface();
-
-    //pthread_join(check_files_thread, NULL);
-    //pthread_join(user_interface_thread, NULL);
-    //pthread_cancel(check_files_thread);
 }

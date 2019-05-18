@@ -1,6 +1,5 @@
 #ifndef CLIENT_H
 #define CLIENT_H
-#include "Communication_client.h"
 
 #include <string>
 #include <vector>
@@ -18,8 +17,7 @@ private:
     std::vector<file> watched_files;
 
     pthread_t check_files_thread;
-    
-    Communication_client communication;
+    //Communication_client communication;
 
 public:
     struct th_args{
@@ -38,7 +36,7 @@ public:
     void setDir(std::string dir);
     void setRunning(bool running);
     pthread_t* getCheckFilesThread();
-    Communication_client* getCommunication();
+    //Communication_client* getCommunication();
 
     // rest
     void printWatchedFies();

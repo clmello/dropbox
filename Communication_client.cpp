@@ -293,8 +293,8 @@ void Communication_client::list_server_command(int command) {
     std::cout << "\n\nlist_server: " << receive_payload(this->sockfd)->_payload << std::endl << std::endl;
 }
 
-packet* Communication_client::receive_payload(int sockfd) {
-    struct packet *pkt = receive_header(this->sockfd);
+Communication_client::packet* Communication_client::receive_payload(int sockfd) {
+    packet *pkt = receive_header(this->sockfd);
 	int bytes_received=0;
     bzero(buffer, pkt->length);
     while(bytes_received < pkt->length)
@@ -310,28 +310,28 @@ packet* Communication_client::receive_payload(int sockfd) {
 	std::cout << "\nbytes lidos: " << bytes_received;
 	pkt->_payload = (const char*)this->buffer;
 	if(pkt->type != 1){ // If the packet is not a command
-	    cout << "\npayload(char*): ";
+	    std::cout << "\npayload(char*): ";
 	    printf("%.*s\n", this->payload_size, pkt->_payload);
     }
     else{ // If the packet is a command
-	    cout << "payload(int): ";
+	    std::cout << "payload(int): ";
         int command;
         memcpy(&command, pkt->_payload, pkt->length);
-        cout << command;
+        std::cout << command;
     }
     std::cout << std::endl << std::endl;
 	return pkt;
 }
 
-packet* Communication_client::receive_header(int sockfd) {
+Communication_client::packet* Communication_client::receive_header(int sockfd) {
 	int bytes_received=0;
     bzero(this->buffer, this->header_size);
-	cout << "\n\nbytes lidos: " << bytes_received;
+	std::cout << "\n\nbytes lidos: " << bytes_received;
     while(bytes_received < this->header_size)
     {
         //cout << "\n\nsockfd = " << sockfd << "\n\n";
         // read from the socket
-        int n = read(ths->sockfd, this->buffer, this->header_size);
+        int n = read(this->sockfd, this->buffer, this->header_size);
         if (n < 0)
             printf("ERROR reading from socket");
             
@@ -339,7 +339,7 @@ packet* Communication_client::receive_header(int sockfd) {
 		std::cout << "\nbytes lidos: "<< bytes_received;
 	}
 	// Bytes from buffer[4] to buffer[7] are the size of _payload
-	struct packet* header;
+	packet* header;
 	header = (packet*)malloc(this->header_size);
 	memcpy(&header->type, &this->buffer[0], 2);
 	memcpy(&header->seqn, &this->buffer[2], 2);

@@ -9,7 +9,9 @@ Communication_server::Communication_server(int port)
 	this->max_payload = 502;
 	this->packet_size = this->header_size + this->max_payload;
 	this->buffer = (char*)malloc(packet_size);
+	this->buffer_address = (size_t)buffer;
 	this->header = (packet*)malloc(header_size);
+	this->header_address = (size_t)header;
 	cout << "\nchamando aceita_conexoes\n";
 	accept_connections();
 }
@@ -70,6 +72,8 @@ void *Communication_server::accept_connections()
 
 packet* Communication_server::receive_header(int sockfd)
 {
+    buffer = (char*)buffer_address;
+    header = (packet*)header_address;
     cout << "\n\nENTREI NO RECEIVE_HEADER\n\n";
 	int bytes_received=0;
 	cout << "\n\nbytes lidos: "<<bytes_received;
@@ -89,6 +93,9 @@ packet* Communication_server::receive_header(int sockfd)
 	}
 	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
 	{
+	    cout << "\nKAPOW!\n";
+        cout << "buffer[0]: " << buffer[0] << endl;
+        cout << "buffer[1]: " << buffer[1] << endl;
 	    // Bytes from buffer[4] to buffer[7] are the size of _payload
 	    memcpy(&header->type, &buffer[0], 2);
 	    memcpy(&header->seqn, &buffer[2], 2);
@@ -141,8 +148,6 @@ void *Communication_server::receive_commands(int sockfd)
     {
         // Wait for a command
         cout << "\nwaiting for command\n";
-        bzero(buffer, header_size);
-        cout << "buffer[0]: " << buffer[0] << endl;
         struct packet *pkt = receive_payload(sockfd);
         while(pkt->length == 0)
         {
@@ -247,7 +252,7 @@ void Communication_server::send_string(int sockfd, string str)
     
     int i;
     int total_bytes_sent = 0;
-    char *str_buff = (char*)malloc(str.size());
+    //char *str_buff = (char*)malloc(str.size());
     cout << "\n\nenviando: " << endl << str;
     
     // Send each packet
@@ -272,8 +277,10 @@ void Communication_server::send_string(int sockfd, string str)
         
         // Read pkt.length characters from the string
         //and save it to pkt._payload
+        char str_buff[pkt.length];
         strcpy(str_buff, str.substr((i-1)*max_payload, pkt.length).c_str());
-        pkt._payload = str_buff;
+        pkt._payload = (const char*)&str_buff;
+        cout << "\npkt.payload: " << pkt._payload;
         
         // Point buffer to pkt
         buffer = (char*)&pkt;
@@ -317,7 +324,6 @@ void Communication_server::send_string(int sockfd, string str)
         cout << "bytes sent: " << bytes_sent << endl;
         //------------------------------------------------------------------------
     }
-    free(str_buff);
 }
 
 void Communication_server::send_file(int sockfd, string file_name, string path)

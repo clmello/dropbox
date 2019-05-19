@@ -38,7 +38,9 @@ class Communication_server
 		int max_payload;
 		int packet_size;
 		char* buffer;
+		size_t buffer_address;
 		struct packet* header;
+		size_t header_address;
 //		char output[512];
 		vector<pthread_t> client_threads;
 		vector<Connected_client> connected_clients;

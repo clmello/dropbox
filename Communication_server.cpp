@@ -61,7 +61,7 @@ void *Communication_server::accept_connections()
 		
 		// Create client folder, if it doesn't already exist
 		string homedir = getenv("HOME");
-		create_folder(homedir+"/sync_dir_"+connected_clients[connected_clients.size()-1].get_username());
+		create_folder(homedir+"/server_sync_dir_"+connected_clients[connected_clients.size()-1].get_username());
 
         // Create the thread for this client
         pthread_create(&client_thread, NULL, receive_commands_helper, &args);
@@ -164,7 +164,7 @@ void *Communication_server::receive_commands(int sockfd)
                 cout << "\ncommand 1 received\n";
                 
                 string path = getenv("HOME");
-                path = path + "/sync_dir_" + username + "/" + receive_payload(sockfd)->_payload;
+                path = path + "/server_sync_dir_" + username + "/" + receive_payload(sockfd)->_payload;
                 cout << "String path: " << path;
                 receive_file(sockfd, path);
                 
@@ -181,7 +181,7 @@ void *Communication_server::receive_commands(int sockfd)
                 cout << "\ncommand 2 received\n";
                 
                 string path = getenv("HOME");
-                path = path + "/sync_dir_" + username;
+                path = path + "/server_sync_dir_" + username;
                 cout << "String path: " << path;
                 delete_file(path);
                 
@@ -192,7 +192,7 @@ void *Communication_server::receive_commands(int sockfd)
                 cout << "\ncommand 4 received\n";
 		        
                 string path = getenv("HOME");
-                path = path + "/sync_dir_" + username;
+                path = path + "/server_sync_dir_" + username;
                 DIR *fileDir;
                 struct dirent *lsdir;
 

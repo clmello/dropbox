@@ -32,13 +32,16 @@ public:
 		const char*	_payload;		//Dados do pacote
 	} packet;
 
-	packet pkt;
 	Communication_client();
 	bool connect_client_server(Client client);
 	void send_command(int command);
 	void upload_command(int command, std::string filename, std::string path);
 	void send_filename(std::string filename);
 	void send_file(std::string filename, std::string path);
+ 	packet* receive_header(int sockfd);
+	packet* receive_payload(int sockfd);
+	void list_server_command(int command);
+	void exit_command(int command);
 };
 
 #endif // COMMUNICATION_CLIENT_H

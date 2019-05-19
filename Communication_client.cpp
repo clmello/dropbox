@@ -107,11 +107,11 @@ void Communication_client::send_command(int command) {
 	
 	// send header
 	// write in the socket
-	char* buffer = (char*)&pkt;
+	this->buffer = (char*)&pkt;
 	int bytes_sent = 0;
 	while (bytes_sent < this->header_size)
 	{
-	    n = write(this->sockfd, &buffer[bytes_sent], this->header_size - bytes_sent);
+	    n = write(this->sockfd, &this->buffer[bytes_sent], this->header_size - bytes_sent);
         if (n < 0) 
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
@@ -284,4 +284,78 @@ void Communication_client::send_file(std::string filename, std::string path){
     }
 	
 	fclose(fp);
+}
+
+
+void Communication_client::list_server_command(int command) {
+    send_command(command);
+
+    std::cout << "\n\nlist_server: " << receive_payload(this->sockfd)->_payload << std::endl << std::endl;
+}
+
+packet* Communication_client::receive_payload(int sockfd) {
+    struct packet *pkt = receive_header(this->sockfd);
+	int bytes_received=0;
+    bzero(buffer, pkt->length);
+    while(bytes_received < pkt->length)
+    {
+        // read from the socket
+        int n = read(this->sockfd, this->buffer, pkt->length-bytes_received);
+        if (n < 0)
+            printf("ERROR reading from socket");
+            
+        bytes_received+=n;
+		//cout << "\nbytes lidos: "<<bytes_received<<endl;
+	}
+	std::cout << "\nbytes lidos: " << bytes_received;
+	pkt->_payload = (const char*)this->buffer;
+	if(pkt->type != 1){ // If the packet is not a command
+	    cout << "\npayload(char*): ";
+	    printf("%.*s\n", this->payload_size, pkt->_payload);
+    }
+    else{ // If the packet is a command
+	    cout << "payload(int): ";
+        int command;
+        memcpy(&command, pkt->_payload, pkt->length);
+        cout << command;
+    }
+    std::cout << std::endl << std::endl;
+	return pkt;
+}
+
+packet* Communication_client::receive_header(int sockfd) {
+	int bytes_received=0;
+    bzero(this->buffer, this->header_size);
+	cout << "\n\nbytes lidos: " << bytes_received;
+    while(bytes_received < this->header_size)
+    {
+        //cout << "\n\nsockfd = " << sockfd << "\n\n";
+        // read from the socket
+        int n = read(ths->sockfd, this->buffer, this->header_size);
+        if (n < 0)
+            printf("ERROR reading from socket");
+            
+        bytes_received+=n;
+		std::cout << "\nbytes lidos: "<< bytes_received;
+	}
+	// Bytes from buffer[4] to buffer[7] are the size of _payload
+	struct packet* header;
+	header = (packet*)malloc(this->header_size);
+	memcpy(&header->type, &this->buffer[0], 2);
+	memcpy(&header->seqn, &this->buffer[2], 2);
+	memcpy(&header->total_size, &this->buffer[4], 4);
+	memcpy(&header->length, &this->buffer[8], 2);
+	std::cout << "\ntype: " << header->type;
+	std::cout << "\nseqn: " << header->seqn;
+	std::cout << "\ntotal_size: " << header->total_size;
+	std::cout << "\npayload_size: " << header->length << std::endl;
+	
+	return header;
+}
+
+
+void Communication_client::exit_command(int command) {
+    send_command(7);
+
+    close(this->sockfd);
 }

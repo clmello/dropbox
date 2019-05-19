@@ -108,6 +108,7 @@ void *Client::check_files_loop() {
                         if(difftime(this->watched_files[n].mtime, fileattrib.st_mtime))
                         {
                             std::cout << "\n\nthe file " << d_struct->d_name << " has changed!\n It should be uploaded!\n";
+                            //std::cout << "\ntime changed: "
                             this->watched_files[n].mtime = fileattrib.st_mtime;
                         }
                     }
@@ -221,6 +222,7 @@ std::string Client::createSyncDir() {
 	return dir;
 }
 
+
 void Client::userInterface() {
     bool running = true;
     std::string input;
@@ -277,9 +279,10 @@ void Client::userInterface() {
             communication.send_command(4);
             // metodo pra list_server
         }
+
+        // 
         else if(command == "list_client") {
             std::cout << "List Client \n";
-            //communication.send_command(5); // NÃO PRECISA ENVIAR ESSE COMANDO PARA O SERVIDOR
              DIR *fileDir; 
             struct dirent *lsdir;
 
@@ -340,16 +343,18 @@ int main(int argc, char **argv) {
         std::exit(1);
     }
 
-    /*** SINCRONIZAÇÃO COM O SERVIDOR ***/
-    // Aqui verifica se já existe o diretório, se não existe então cria
+    client.setRunning(true);
+
+    // Cria diretório de sincronização
     std::string dir = client.createSyncDir();
 	client.setDir(dir);
 
-    client.setRunning(true);
+    /*** SINCRONIZAÇÃO COM O SERVIDOR ***/
+    // Aqui verifica se já existe o diretório, se não existe então cria
+    //client.syncClient();
 
-    // chama método queinicializa thread que fica verificando se arquivos foram modificados
+    /* Inicializa thread de sincronização*/
     pthread_create(client.getCheckFilesThread(), NULL, &Client::check_files_helper, &client);
 
-    printf("Well, hi\n");
     client.userInterface();
 }

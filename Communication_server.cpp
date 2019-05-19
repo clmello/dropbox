@@ -63,8 +63,8 @@ void *Communication_server::accept_connections()
 
         // Create the thread for this client
         pthread_create(&client_thread, NULL, receive_commands_helper, &args);
-        pthread_join(client_thread,NULL);
     //}
+    pthread_join(client_thread,NULL);
 
 }
 
@@ -72,7 +72,6 @@ packet* Communication_server::receive_header(int sockfd)
 {
     cout << "\n\nENTREI NO RECEIVE_HEADER\n\n";
 	int bytes_received=0;
-    bzero(buffer, header_size);
 	cout << "\n\nbytes lidos: "<<bytes_received;
     while(bytes_received < header_size)
     {
@@ -88,15 +87,18 @@ packet* Communication_server::receive_header(int sockfd)
         bytes_received+=n;
 		//cout << "\nbytes lidos: "<<bytes_received;
 	}
-	// Bytes from buffer[4] to buffer[7] are the size of _payload
-	memcpy(&header->type, &buffer[0], 2);
-	memcpy(&header->seqn, &buffer[2], 2);
-	memcpy(&header->total_size, &buffer[4], 4);
-	memcpy(&header->length, &buffer[8], 2);
-	cout << "\ntype: " << header->type;
-	cout << "\nseqn: " << header->seqn;
-	cout << "\ntotal_size: " << header->total_size;
-	cout << "\npayload_size: " << header->length << endl;
+	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
+	{
+	    // Bytes from buffer[4] to buffer[7] are the size of _payload
+	    memcpy(&header->type, &buffer[0], 2);
+	    memcpy(&header->seqn, &buffer[2], 2);
+	    memcpy(&header->total_size, &buffer[4], 4);
+	    memcpy(&header->length, &buffer[8], 2);
+	    cout << "\ntype: " << header->type;
+	    cout << "\nseqn: " << header->seqn;
+	    cout << "\ntotal_size: " << header->total_size;
+	    cout << "\npayload_size: " << header->length << endl;
+    }
 	
 	return header;
 }
@@ -106,7 +108,6 @@ packet* Communication_server::receive_payload(int sockfd)
     cout << "\n\nENTREI NO RECEIVE_PAYLOAD\n\n";
     struct packet *pkt = receive_header(sockfd);
 	int bytes_received=0;
-    bzero(buffer, pkt->length);
     while(bytes_received < pkt->length)
     {
         // read from the socket
@@ -140,6 +141,8 @@ void *Communication_server::receive_commands(int sockfd)
     {
         // Wait for a command
         cout << "\nwaiting for command\n";
+        bzero(buffer, header_size);
+        cout << "buffer[0]: " << buffer[0] << endl;
         struct packet *pkt = receive_payload(sockfd);
         while(pkt->length == 0)
         {
@@ -156,7 +159,7 @@ void *Communication_server::receive_commands(int sockfd)
                 cout << "\ncommand 1 received\n";
                 
                 string path = getenv("HOME");
-                path = path + "/sync_dir_" + username;
+                path = path + "/sync_dir_" + username + "/" + receive_payload(sockfd)->_payload;
                 cout << "String path: " << path;
                 receive_file(sockfd, path);
                 

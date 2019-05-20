@@ -121,6 +121,14 @@ packet* receive_payload(int sockfd)
 	return pkt;
 }
 
+int receive_int(int sockfd)
+{
+    struct packet *pkt = receive_payload(sockfd);
+    int integer;
+    memcpy(&integer, pkt->_payload, pkt->length);
+    return integer;
+}
+
 
 
 
@@ -261,6 +269,12 @@ int main(int argc, char *argv[])
     cout << "bytes sent: " << bytes_sent << endl;
     //------------------------------------------------------------------------
     
+    // Receive return int
+    if(receive_int(sockfd) < 0){
+        cout << "\nServer closed\n";
+        exit(0);
+    }
+    
     //------------------------------------------------------------------------
     // RECEIVE STRING
     //------------------------------------------------------------------------
@@ -313,6 +327,12 @@ int main(int argc, char *argv[])
     cout << "bytes sent: " << bytes_sent << endl;
     //sleep(5);
     //------------------------------------------------------------------------
+    
+    // Receive return int
+    if(receive_int(sockfd) < 0){
+        cout << "\nServer closed\n";
+        exit(0);
+    }
     
     
     // To send a file, you must first send the file name, and then the file
@@ -502,6 +522,7 @@ int main(int argc, char *argv[])
     
     
     
+    sleep(5);
     
     
     
@@ -541,8 +562,13 @@ int main(int argc, char *argv[])
 		bytes_sent += n;
     }
     cout << "bytes sent: " << bytes_sent << endl;
-    sleep(5);
     //------------------------------------------------------------------------
+    
+    // Receive return int
+    if(receive_int(sockfd) < 0){
+        cout << "\nServer closed\n";
+        exit(0);
+    }
     
     //------------------------------------------------------------------------
     // SEND FILENAME
@@ -629,6 +655,14 @@ int main(int argc, char *argv[])
     }
     cout << "bytes sent: " << bytes_sent << endl;
     //------------------------------------------------------------------------
+    
+    // Receive return int
+    if(receive_int(sockfd) < 0){
+        cout << "\nServer closed\n";
+        exit(0);
+    }
+    
+    
     cout << "\n\nEND!\n\n";
 	close(sockfd);
 	

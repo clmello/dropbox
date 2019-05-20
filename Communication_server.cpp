@@ -2,6 +2,9 @@
 
 using namespace std;
 
+// This global variable tells all the threads in the server that the server will close
+extern bool closing_server;
+
 Communication_server::Communication_server(int port)
 {
 	this->port = port;
@@ -43,26 +46,30 @@ void *Communication_server::accept_connections()
     listen(sockfd, 5);
     clilen = sizeof(struct sockaddr_in);
 
-    //while(true) // TODO: Qual é a condição para o server fechar?
-    //{
-        int newsockfd;
+    while(true)
+    {
+        int newsockfd = -1;
         cout << "\nWaiting for connection . . .\n";
-        if ((newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen)) == -1)
-            printf("ERROR on accept");
+        
+        //while(newsockfd<0 && !closing_server)
+            newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+        if(closing_server)
+            close_server();
 
-        //cout << "CLIENTE DE IP " << cli_addr.sin_port << " CONECTADO!";
+        cout << "CLIENTE DE IP " << cli_addr.sin_port << " CONECTADO!";
         
         // Receive username frim client
         string new_client_username = receive_payload(newsockfd)->_payload;
 		
 		// Check if the client is already connected. If it is, check if number of connections > max_connections
-		int return_value=0;
+		// num_connections will be -1 if number of connections > max_connections
+		int num_connections=0;
         for(int i=0; i<connected_clients.size(); i++){
             if(new_client_username == connected_clients[i].get_username())
-                return_value = connected_clients[i].new_connection();
+                num_connections = connected_clients[i].new_connection();
         }
         
-        if(return_value < 0) // Too many connections
+        if(num_connections < 0) // Too many connections
             cout << "\nClient " << new_client_username << " failed to connect. Too many connections." << endl;
 		else
 		{
@@ -75,28 +82,36 @@ void *Communication_server::accept_connections()
 		    // Create client folder, if it doesn't already exist
 		    string homedir = getenv("HOME");
 		    create_folder(homedir+"/server_sync_dir_"+new_client_username);
+            
+		    // Create the new connected client
+		    Connected_client new_client(new_client_username, newsockfd, num_connections);  
 
             // Create a struct with the arguments to be sent to the new thread
             struct th_args args;
             args.obj = this;
-            args.newsockfd = &newsockfd;
+            args.newsockfd = new_client.get_sockfd();  
 
             // Create the thread for this client
 		    pthread_t client_thread;
             pthread_create(&client_thread, NULL, receive_commands_helper, &args);
             
-		    // Create the new connected client and add it to the connected_clients vector
-		    Connected_client new_client(client_thread, new_client_username, newsockfd);    
+            // Set the new connected client thread and add it to the connected_clients vector
+            new_client.set_thread(client_thread);
 		    connected_clients.push_back(new_client);
         }
-    //}
+    }
+}
+
+void Communication_server::close_server()
+{
+    cout << "\n\nENTREI NO CLOSE_SERVER\n\n";
     // Close all client sockets and join all client threads
     for(int i=0; i<connected_clients.size(); i++){
         pthread_join(connected_clients[i].get_thread(), NULL);
-        close(connected_clients[i].get_sockfd());
-        cout << "\n\nEND!\n\n";
+        close(*connected_clients[i].get_sockfd());
     }
-
+    cout << "\n\nEND!\n\n";
+    exit(0);
 }
 
 packet* Communication_server::receive_header(int sockfd)
@@ -184,7 +199,15 @@ void *Communication_server::receive_commands(int sockfd)
         }
         int command;
         memcpy(&command, pkt->_payload, pkt->length);
-        //cout << "command received: " << command << endl;
+        
+        // If server is trying to close, send -1 to the client. Otherwise, send 1
+        if(closing_server){
+            send_int(sockfd, -1);
+            command = 7;
+        }
+        else{
+            send_int(sockfd, 1);
+        }
         
         switch(command)
         {
@@ -312,7 +335,12 @@ void *Communication_server::receive_commands(int sockfd)
             }
             case 7: // Exit
             {
-                cout << "\ncommand 7 received\n";
+                // If the server chose to exit, the client did not send command 7
+                if(!closing_server)
+                    cout << "\ncommand 7 received\n";
+                
+                // Tell the client that the command was received
+                send_int(sockfd, 1);
                 
                 close(sockfd);
                 cout << "\nclient " << username << " disconnected\n";
@@ -418,6 +446,46 @@ void Communication_server::send_string(int sockfd, string str)
         //printf("%.*s\n", max_payload, pkt._payload);
         //cout << "bytes sent: " << bytes_sent << endl;
         //------------------------------------------------------------------------
+    }
+}
+
+void Communication_server::send_int(int sockfd, int number)
+{    
+    // Create the packet that will be sent
+    struct packet pkt;
+    pkt.type = 0;
+    pkt.seqn = 1;
+    pkt.total_size = 1;
+    pkt.length = sizeof(int);
+    pkt._payload = (const char*)&number;
+
+    // Point buffer to pkt
+    buffer = (char*)&pkt;
+
+    //------------------------------------------------------------------------
+    // SEND HEADER
+    //------------------------------------------------------------------------
+    // write in the socket
+    int bytes_sent = 0;
+    while (bytes_sent < header_size)
+    {
+        int n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
+        if (n < 0) 
+            printf("ERROR writing to socket\n");
+        bytes_sent += n;
+    }
+
+    //------------------------------------------------------------------------
+    // SEND PAYLOAD
+    //------------------------------------------------------------------------
+    // write in the socket
+    bytes_sent = 0;
+    while (bytes_sent < pkt.length)
+    {
+        int n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+        if (n < 0) 
+            printf("ERROR writing to socket\n");
+        bytes_sent += n;
     }
 }
 

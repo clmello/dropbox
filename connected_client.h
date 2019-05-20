@@ -11,14 +11,16 @@ using namespace std;
 class Connected_client{
 
 	public:
-		Connected_client(pthread_t thread, string username, int sockfd);
+		Connected_client(string username, int sockfd, int num_connections);
 
 		string get_username();
-		int get_sockfd();
+		int *get_sockfd();
 		int get_num_connections();
 		pthread_t get_thread();
+		
+		void set_thread(pthread_t thread);
 
-		// Returns 0 if num_connections+1 < max_connections, -1 otherwise
+		// Returns num_connections+1 if num_connections+1 < max_connections, -1 otherwise
 		int new_connection();
 
 	private:

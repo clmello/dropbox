@@ -1,6 +1,6 @@
 #include "Communication_server.h"
-#include <iostream>
-#include <pthread.h>
+#include <signal.h>
+#include <unistd.h>
 
 using namespace std;
 
@@ -17,6 +17,18 @@ void print_bytes(const void *object, size_t size)
   }
   printf("]\n");
 }
+
+// This global variable tells all the threads in the server that the server will close
+bool closing_server = false;
+
+// This function will handle the sigInt signal
+void signal_handler(int sig)
+{
+	cout << "\nCaught signal " << sig << " (SIGINT)\nFinishing up . . .\n";
+	closing_server = true;
+}
+
+
 
 int main()
 {
@@ -42,6 +54,20 @@ int main()
 	//cout << "\nsizeof(*pkt._payload) == " << sizeof(*pkt._payload) << endl;
 	//cout << sizeof("teste")<<"\nteste\n";*/
 	
+	//TODO: IMPLEMENTAR INPUT_THREAD, que vai receber uma string do terminal (no server)
+	//se a string for exit, termina o servidor (mas antes fecha os sockets e as threads)
+	// OU
+	// Dar um catch no ctrl c do terminal pro programa fechar direitinho
+	
+	// Link the signal_handler function to the sigInt signal. Once the user presses
+	//ctrl+c, the function will be called and close_server will be true
+	struct sigaction sigInt_handler;
+	sigInt_handler.sa_handler = signal_handler;
+	sigemptyset(&sigInt_handler.sa_mask);
+	sigInt_handler.sa_flags = 0;
+	sigaction(SIGINT, &sigInt_handler, NULL);
+	
+	// Start the server
 	Communication_server com(4001);
 	return 0;
 }

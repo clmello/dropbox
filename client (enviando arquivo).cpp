@@ -8,6 +8,7 @@
 #include <netdb.h> 
 #include <pthread.h>
 #include <iostream>
+#include <ctime>
 
 #define PORT 4001
 
@@ -325,6 +326,50 @@ int main(int argc, char *argv[])
     pkt.seqn = 1;
     pkt.total_size = 1;
     pkt.length = 9;
+	pkt._payload = payload;
+    std::cout << "\n\nfilename: " << pkt._payload << std::endl;
+    
+	// copy pkt to buffer
+	buffer = (char*)&pkt;
+	
+	// send header
+	/* write in the socket */
+	bytes_sent = 0;
+	while (bytes_sent < header_size)
+	{
+	    n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
+        if (n < 0) 
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+    cout << "bytes sent: " << bytes_sent << endl;
+    
+    //send payload
+	/* write in the socket */
+	bytes_sent = 0;
+	while (bytes_sent < pkt.length)
+	{
+	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+        if (n < 0) 
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+    cout << "bytes sent: " << bytes_sent << endl;
+    //------------------------------------------------------------------------
+    
+    //------------------------------------------------------------------------
+    // SEND MTIME
+    //------------------------------------------------------------------------
+    time_t mtime = std::time(0);
+    cout << "\nmtime: " << mtime << endl;
+    
+    payload = (char*)&mtime;
+    
+    // Create the packet that will be sent
+    pkt.type = 0;
+    pkt.seqn = 1;
+    pkt.total_size = 1;
+    pkt.length = sizeof(time_t);
 	pkt._payload = payload;
     std::cout << "\n\nfilename: " << pkt._payload << std::endl;
     

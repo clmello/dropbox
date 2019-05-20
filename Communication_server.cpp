@@ -164,8 +164,18 @@ void *Communication_server::receive_commands(int sockfd)
                 cout << "\ncommand 1 received\n";
                 
                 string path = getenv("HOME");
-                path = path + "/server_sync_dir_" + username + "/" + receive_payload(sockfd)->_payload;
-                cout << "String path: " << path;
+                // Receive the file name
+                string filename = receive_payload(sockfd)->_payload;
+                path = path + "/server_sync_dir_" + username + "/" + filename;
+                cout << "String path: " << path << endl;
+                
+                // Receive mtime
+                time_t mtime = *(time_t*)receive_payload(sockfd)->_payload;
+                cout << "mtime: " << mtime << endl;
+                
+                update_watched_file(filename, mtime);
+                
+                // Receive the file
                 receive_file(sockfd, path);
                 
                 break;
@@ -173,6 +183,19 @@ void *Communication_server::receive_commands(int sockfd)
             case 2: // Download from server
             {
                 cout << "\ncommand 2 received\n";
+                
+                string path = getenv("HOME");
+                // Receive the file name
+                string filename = receive_payload(sockfd)->_payload;
+                path = path + "/server_sync_dir_" + username + "/" + filename;
+                
+                //Send mtime
+                time_t mtime = get_mtime(filename);
+                char* mtime_char = (char*)&mtime;
+                send_string(sockfd, mtime_char);
+                
+                // Send file
+                send_file(sockfd, path);
                 
                 break;
             }
@@ -215,6 +238,41 @@ void *Communication_server::receive_commands(int sockfd)
             case 6: // Get sync_dir
             {
                 cout << "\ncommand 6 received\n";
+                
+                // Open sync_dir folder
+                string path = getenv("HOME");
+                path = path + "/server_sync_dir_" + username;
+                DIR *fileDir;
+                struct dirent *lsdir;
+                fileDir = opendir(path.c_str());
+                
+                // Get the number of files
+                int number_of_files = 0;
+                while ((lsdir = readdir(fileDir)) != NULL){
+                    if(lsdir->d_name[0] != '.')
+                        number_of_files++;
+                }
+                rewinddir(fileDir);
+                
+                // Send number of files to the client
+                string number_of_files_str = to_string(number_of_files);
+                cout << "\nnumber of files: " << number_of_files_str << endl;
+                send_string(sockfd, number_of_files_str);
+                
+                // Send the name of each file and its mtime
+                while ((lsdir = readdir(fileDir)) != NULL){
+                    if(lsdir->d_name[0] != '.'){
+                        // Send filename
+                        send_string(sockfd, lsdir->d_name);
+                        
+                        // Get mtime
+                        time_t mtime = get_mtime(lsdir->d_name);
+                        char* mtime_char = (char*)&mtime;
+                        // Send mtime
+                        send_string(sockfd, mtime_char);
+                    }
+                }
+                closedir(fileDir);
                 
                 break;
             }
@@ -326,51 +384,8 @@ void Communication_server::send_string(int sockfd, string str)
     }
 }
 
-void Communication_server::send_file(int sockfd, string file_name, string path)
-{        
-    // To send a file, you must first send the file name, and then the file
-    //------------------------------------------------------------------------
-    // SEND FILENAME
-    //------------------------------------------------------------------------
-    //const char* payload = file_name.c_str();
-    
-    // Create the packet that will be sent
-    struct packet pkt;
-    pkt.type = 0;
-    pkt.seqn = 1;
-    pkt.total_size = 1;
-    pkt.length = 9;
-	pkt._payload = file_name.c_str();
-    std::cout << "\n\nfilename: " << pkt._payload << std::endl;
-    
-	// copy pkt to buffer
-	buffer = (char*)&pkt;
-	
-	// send header
-	/* write in the socket */
-	int bytes_sent = 0;
-	while (bytes_sent < header_size)
-	{
-	    int n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
-        if (n < 0) 
-		    printf("ERROR writing to socket\n");
-		bytes_sent += n;
-    }
-    cout << "bytes sent: " << bytes_sent << endl;
-    
-    //send payload
-	/* write in the socket */
-	bytes_sent = 0;
-	while (bytes_sent < pkt.length)
-	{
-	    int n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
-        if (n < 0) 
-		    printf("ERROR writing to socket\n");
-		bytes_sent += n;
-    }
-    cout << "bytes sent: " << bytes_sent << endl;
-    //------------------------------------------------------------------------
-    
+void Communication_server::send_file(int sockfd, string path)
+{
     //------------------------------------------------------------------------
     // SEND FILE
     //------------------------------------------------------------------------
@@ -554,3 +569,61 @@ long Communication_server::get_file_size(FILE *fp)
     fclose(fp);
     return size;
 }
+
+bool Communication_server::file_is_watched(string filename)
+{
+    bool file_found = false;
+    for(int i=0; i < watched_files.size(); i++)
+    {
+        if(filename == watched_files[i].name)
+            file_found = true;
+    }
+    return file_found;
+}
+
+void Communication_server::update_watched_file(string filename, time_t mtime)
+{
+    if(!file_is_watched(filename)){
+        struct file new_file;
+        new_file.name = filename;
+        new_file.mtime = mtime;
+        
+        watched_files.push_back(new_file);
+    }
+    else{
+        for(int i=0; i < watched_files.size(); i++)
+        {
+            if(filename == watched_files[i].name)
+            {
+                if(mtime > watched_files[i].mtime)
+                    watched_files[i].mtime = mtime;
+                break;
+            }
+        }
+    }
+}
+
+time_t Communication_server::get_mtime(string filename)
+{
+    for(int i=0; i < watched_files.size(); i++)
+    {
+        if(filename == watched_files[i].name)
+            return watched_files[i].mtime;
+    }
+    return -1;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

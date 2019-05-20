@@ -18,55 +18,84 @@ Communication_server::Communication_server(int port)
 
 void *Communication_server::accept_connections()
 {
-    int sockfd, newsockfd;
+    int sockfd;
+    vector<int> client_sockets;
     socklen_t clilen;
     struct sockaddr_in serv_addr, cli_addr;
-    //while(true) // TODO: ENQUANTO USUARIO NÃO FECHA
+    
+    // Create the socket as non-blocking. Without this, it's impossible for the server to close (since it blocks)
+    // Será que precisa? Como que o server é fechado?
+    //if ((sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+        printf("ERROR opening socket");
+        cout << "\nsocket aberto\n";
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(port);
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    bzero(&(serv_addr.sin_zero), 8);
+
+    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+        printf("ERROR on binding");
+        cout << "\nbinding completo\n";
+
+
+    listen(sockfd, 5);
+    clilen = sizeof(struct sockaddr_in);
+
+    //while(true) // TODO: Qual é a condição para o server fechar?
     //{
-        if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-            printf("ERROR opening socket");
-            cout << "\nsocket aberto\n";
-
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(port);
-        serv_addr.sin_addr.s_addr = INADDR_ANY;
-        bzero(&(serv_addr.sin_zero), 8);
-
-        if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
-            printf("ERROR on binding");
-            cout << "\nbinding completo\n";
-
-
-        listen(sockfd, 5);
-
-        cout << "\nesperando conexao\n";
-        clilen = sizeof(struct sockaddr_in);
+        int newsockfd;
+        cout << "\nWaiting for connection . . .\n";
         if ((newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen)) == -1)
             printf("ERROR on accept");
 
-        cout << "CLIENTE DE IP " << cli_addr.sin_port << " CONECTADO!";
-
-        // Create a struct with the arguments to be sent to the new thread
-        struct th_args args;
-        args.obj = this;
-        args.newsockfd = &newsockfd;
+        //cout << "CLIENTE DE IP " << cli_addr.sin_port << " CONECTADO!";
+        
+        // Receive username frim client
+        string new_client_username = receive_payload(newsockfd)->_payload;
 		
-		// Create the new connected client and add it to the connected_clients vector
-		pthread_t client_thread;
-		//TODO: VERIFICAR SE TEM DUAS CONEXOES
-		Connected_client new_client(client_thread, receive_payload(newsockfd)->_payload, newsockfd);
-		connected_clients.push_back(new_client);
-		cout << "\nUsername: " << connected_clients[0].get_username() << endl;
-		this->username = connected_clients[0].get_username();
+		// Check if the client is already connected. If it is, check if number of connections > max_connections
+		int return_value=0;
+        for(int i=0; i<connected_clients.size(); i++){
+            if(new_client_username == connected_clients[i].get_username())
+                return_value = connected_clients[i].new_connection();
+        }
+        
+        if(return_value < 0) // Too many connections
+            cout << "\nClient " << new_client_username << " failed to connect. Too many connections." << endl;
+		else
+		{
+		    cout << "\nClient " << new_client_username << " connected" << endl;
+		    
+		    // TODO: a linha seguinte vai dar problema com mais de um client
+		    this->username = new_client_username;
+		    cout << "\n\nUSERNAME: " << new_client_username << endl << endl;
 		
-		// Create client folder, if it doesn't already exist
-		string homedir = getenv("HOME");
-		create_folder(homedir+"/server_sync_dir_"+connected_clients[connected_clients.size()-1].get_username());
+		    // Create client folder, if it doesn't already exist
+		    string homedir = getenv("HOME");
+		    create_folder(homedir+"/server_sync_dir_"+new_client_username);
 
-        // Create the thread for this client
-        pthread_create(&client_thread, NULL, receive_commands_helper, &args);
+            // Create a struct with the arguments to be sent to the new thread
+            struct th_args args;
+            args.obj = this;
+            args.newsockfd = &newsockfd;
+
+            // Create the thread for this client
+		    pthread_t client_thread;
+            pthread_create(&client_thread, NULL, receive_commands_helper, &args);
+            
+		    // Create the new connected client and add it to the connected_clients vector
+		    Connected_client new_client(client_thread, new_client_username, newsockfd);    
+		    connected_clients.push_back(new_client);
+        }
     //}
-    pthread_join(client_thread,NULL);
+    // Close all client sockets and join all client threads
+    for(int i=0; i<connected_clients.size(); i++){
+        pthread_join(connected_clients[i].get_thread(), NULL);
+        close(connected_clients[i].get_sockfd());
+        cout << "\n\nEND!\n\n";
+    }
 
 }
 
@@ -285,8 +314,11 @@ void *Communication_server::receive_commands(int sockfd)
             {
                 cout << "\ncommand 7 received\n";
                 
+                close(sockfd);
+                cout << "\nclient " << username << " disconnected\n";
                 _exit = true;
                 
+                // The moment the thread exits this function, it will be terminated
                 break;
             }
             default:

@@ -6,6 +6,7 @@ Connected_client::Connected_client(pthread_t thread, string username, int sockfd
 	this->username = username;
 	this->sockfd = sockfd;
 	this->num_connections = 1;
+	this->max_connections = 2;
 }
 
 string Connected_client::get_username() {return username;}
@@ -13,6 +14,8 @@ string Connected_client::get_username() {return username;}
 int Connected_client::get_sockfd() {return sockfd;}
 
 int Connected_client::get_num_connections() {return num_connections;}
+
+pthread_t Connected_client::get_thread() {return thread;}
 
 int Connected_client::new_connection()
 {

@@ -16,6 +16,7 @@ class Connected_client{
 		string get_username();
 		int get_sockfd();
 		int get_num_connections();
+		pthread_t get_thread();
 
 		// Returns 0 if num_connections+1 < max_connections, -1 otherwise
 		int new_connection();

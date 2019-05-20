@@ -66,6 +66,7 @@ class Communication_server
 		bool file_is_watched(string filename);
 		void update_watched_file(string filename, time_t mtime);
 		time_t get_mtime(string filename);
+		void remove_watched_file(string filename);
 
 
 		struct th_args{

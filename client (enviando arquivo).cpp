@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
     //------------------------------------------------------------------------
     // This send was created to test sending an integer.
     
-    sleep(5);
+    //sleep(5);
     pkt.type = 1;
     pkt.seqn = 1;
     pkt.total_size = 1;
@@ -265,7 +265,10 @@ int main(int argc, char *argv[])
     // RECEIVE STRING
     //------------------------------------------------------------------------
     // This was created to test receiving a string
-    cout << "\n\nlist_server: " << receive_payload(sockfd)->_payload << endl << endl;
+    packet *pkt_ = receive_payload(sockfd);
+    string ls = pkt_->_payload;
+    ls = ls.substr(0, pkt_->length);
+    cout << "\n\nlist_server: " <<  ls << endl << endl;
     //------------------------------------------------------------------------
     
     
@@ -308,10 +311,8 @@ int main(int argc, char *argv[])
 		bytes_sent += n;
     }
     cout << "bytes sent: " << bytes_sent << endl;
-    sleep(5);
+    //sleep(5);
     //------------------------------------------------------------------------
-    
-    
     
     
     // To send a file, you must first send the file name, and then the file
@@ -503,6 +504,93 @@ int main(int argc, char *argv[])
     
     
     
+    
+    // TESTING DELETE FILE
+    
+    //------------------------------------------------------------------------
+    // SEND COMMAND
+    //------------------------------------------------------------------------
+    // This send was created to test sending an integer.
+    
+    pkt.type = 1;
+    pkt.seqn = 1;
+    pkt.total_size = 1;
+    pkt.length = sizeof(int);
+    command = 3;
+	pkt._payload = (const char*)&command;
+	// send header
+	/* write in the socket */
+	buffer = (char*)&pkt;
+	bytes_sent = 0;
+	while (bytes_sent < header_size)
+	{
+	    n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
+        if (n < 0) 
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+    cout << "bytes sent: " << bytes_sent << endl;
+    //send payload
+	/* write in the socket */
+	bytes_sent = 0;
+	while (bytes_sent < pkt.length)
+	{
+	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+        if (n < 0) 
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+    cout << "bytes sent: " << bytes_sent << endl;
+    sleep(5);
+    //------------------------------------------------------------------------
+    
+    //------------------------------------------------------------------------
+    // SEND FILENAME
+    //------------------------------------------------------------------------
+    payload = (char*)"teste.txt";
+    
+    // Create the packet that will be sent
+    pkt.type = 0;
+    pkt.seqn = 1;
+    pkt.total_size = 1;
+    pkt.length = 9;
+	pkt._payload = payload;
+    std::cout << "\n\nfilename: " << pkt._payload << std::endl;
+    
+	// copy pkt to buffer
+	buffer = (char*)&pkt;
+	
+	// send header
+	/* write in the socket */
+	bytes_sent = 0;
+	while (bytes_sent < header_size)
+	{
+	    n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
+        if (n < 0) 
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+    cout << "bytes sent: " << bytes_sent << endl;
+    
+    //send payload
+	/* write in the socket */
+	bytes_sent = 0;
+	while (bytes_sent < pkt.length)
+	{
+	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+        if (n < 0) 
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+    cout << "bytes sent: " << bytes_sent << endl;
+    fclose(fp);
+    //------------------------------------------------------------------------
+    
+    
+    
+    
+    
+    
     // TESTING EXIT
     
     //------------------------------------------------------------------------
@@ -510,7 +598,7 @@ int main(int argc, char *argv[])
     //------------------------------------------------------------------------
     // This send was created to test sending an integer.
     
-    sleep(5);
+    //sleep(5);
     pkt.type = 1;
     pkt.seqn = 1;
     pkt.total_size = 1;
@@ -541,8 +629,7 @@ int main(int argc, char *argv[])
     }
     cout << "bytes sent: " << bytes_sent << endl;
     //------------------------------------------------------------------------
-    
-    fclose(fp);
+    cout << "\n\nEND!\n\n";
 	close(sockfd);
 	
     return 0;

@@ -2,108 +2,23 @@
 
 using namespace std;
 
-Communication_server::Communication_server(int port)
+// This global variable tells all the threads in the server that the server will close
+extern bool closing_server;
+
+void Communication_server::Init(int port, int header_size, int max_payload)
 {
 	this->port = port;
-	this->header_size = 10;
-	this->max_payload = 502;
+	this->header_size = header_size;
+	this->max_payload = max_payload;
 	this->packet_size = this->header_size + this->max_payload;
-	this->buffer = (char*)malloc(packet_size);
-	this->buffer_address = (size_t)buffer;
-	this->header = (packet*)malloc(header_size);
-	this->header_address = (size_t)header;
 	//cout << "\nchamando aceita_conexoes\n";
-	accept_connections();
+	//accept_connections();
 }
 
-void *Communication_server::accept_connections()
+void Communication_server::receive_header(int sockfd, struct packet *header)
 {
-    int sockfd;
-    vector<int> client_sockets;
-    socklen_t clilen;
-    struct sockaddr_in serv_addr, cli_addr;
-    
-    // Create the socket as non-blocking. Without this, it's impossible for the server to close (since it blocks)
-    // Será que precisa? Como que o server é fechado?
-    //if ((sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-        printf("ERROR opening socket");
-        cout << "\nsocket aberto\n";
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    bzero(&(serv_addr.sin_zero), 8);
-
-    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
-        printf("ERROR on binding");
-        cout << "\nbinding completo\n";
-
-
-    listen(sockfd, 5);
-    clilen = sizeof(struct sockaddr_in);
-
-    //while(true) // TODO: Qual é a condição para o server fechar?
-    //{
-        int newsockfd;
-        cout << "\nWaiting for connection . . .\n";
-        if ((newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen)) == -1)
-            printf("ERROR on accept");
-
-        //cout << "CLIENTE DE IP " << cli_addr.sin_port << " CONECTADO!";
-        
-        // Receive username frim client
-        string new_client_username = receive_payload(newsockfd)->_payload;
-		
-		// Check if the client is already connected. If it is, check if number of connections > max_connections
-		int return_value=0;
-        for(int i=0; i<connected_clients.size(); i++){
-            if(new_client_username == connected_clients[i].get_username())
-                return_value = connected_clients[i].new_connection();
-        }
-        
-        if(return_value < 0) // Too many connections
-            cout << "\nClient " << new_client_username << " failed to connect. Too many connections." << endl;
-		else
-		{
-		    cout << "\nClient " << new_client_username << " connected" << endl;
-		    
-		    // TODO: a linha seguinte vai dar problema com mais de um client
-		    this->username = new_client_username;
-		    cout << "\n\nUSERNAME: " << new_client_username << endl << endl;
-		
-		    // Create client folder, if it doesn't already exist
-		    string homedir = getenv("HOME");
-		    create_folder(homedir+"/server_sync_dir_"+new_client_username);
-
-            // Create a struct with the arguments to be sent to the new thread
-            struct th_args args;
-            args.obj = this;
-            args.newsockfd = &newsockfd;
-
-            // Create the thread for this client
-		    pthread_t client_thread;
-            pthread_create(&client_thread, NULL, receive_commands_helper, &args);
-            
-		    // Create the new connected client and add it to the connected_clients vector
-		    Connected_client new_client(client_thread, new_client_username, newsockfd);    
-		    connected_clients.push_back(new_client);
-        }
-    //}
-    // Close all client sockets and join all client threads
-    for(int i=0; i<connected_clients.size(); i++){
-        pthread_join(connected_clients[i].get_thread(), NULL);
-        close(connected_clients[i].get_sockfd());
-        cout << "\n\nEND!\n\n";
-    }
-
-}
-
-packet* Communication_server::receive_header(int sockfd)
-{
-    buffer = (char*)buffer_address;
-    header = (packet*)header_address;
-    //cout << "\n\nENTREI NO RECEIVE_HEADER\n\n";
+	char *buffer = (char*)malloc(header_size);
+    cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_HEADER\n\n";
 	int bytes_received=0;
 	//cout << "\n\nbytes lidos: "<<bytes_received;
     while(bytes_received < header_size)
@@ -118,7 +33,7 @@ packet* Communication_server::receive_header(int sockfd)
             printf("ERROR reading from socket");
             
         bytes_received+=n;
-		//cout << "\nbytes lidos: "<<bytes_received;
+		cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
 	}
 	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
 	{
@@ -130,19 +45,19 @@ packet* Communication_server::receive_header(int sockfd)
 	    memcpy(&header->seqn, &buffer[2], 2);
 	    memcpy(&header->total_size, &buffer[4], 4);
 	    memcpy(&header->length, &buffer[8], 2);
-	    //cout << "\ntype: " << header->type;
-	    //cout << "\nseqn: " << header->seqn;
-	    //cout << "\ntotal_size: " << header->total_size;
-	    //cout << "\npayload_size: " << header->length << endl;
+	    cout << "\n" << sockfd << ": type: " << header->type;
+	    cout << "\n" << sockfd << ": seqn: " << header->seqn;
+	    cout << "\n" << sockfd << ": total_size: " << header->total_size;
+	    cout << "\n" << sockfd << ": payload_size: " << header->length << endl;
     }
-	
-	return header;
+    free(buffer);
 }
 
-packet* Communication_server::receive_payload(int sockfd)
+int Communication_server::receive_payload(int sockfd, struct packet *pkt, bool is_command)
 {
-    //cout << "\n\nENTREI NO RECEIVE_PAYLOAD\n\n";
-    struct packet *pkt = receive_header(sockfd);
+	char *buffer = (char*)malloc(max_payload);
+    cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_PAYLOAD\n\n";
+    receive_header(sockfd, pkt);
 	int bytes_received=0;
     while(bytes_received < pkt->length)
     {
@@ -152,55 +67,69 @@ packet* Communication_server::receive_payload(int sockfd)
             printf("ERROR reading from socket");
             
         bytes_received+=n;
-		//cout << "\nbytes lidos: "<<bytes_received<<endl;
+		cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received<<endl;
 	}
-	//cout << "\nbytes lidos: "<<bytes_received;
+	cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
 	pkt->_payload = (const char*)buffer;
-	/*if(pkt->type != 1){ // If the packet is not a command
-	    cout << "\npayload(char*): ";
+	if(pkt->type != 1){ // If the packet is not a command
+	    cout << "\n" << sockfd << ": payload(char*): ";
 	    printf("%.*s\n", max_payload, pkt->_payload);
     }
     else{ // If the packet is a command
-	    cout << "\npayload(int): ";
+	    cout << "\n" << sockfd << ": payload(int): ";
         int command;
         memcpy(&command, pkt->_payload, pkt->length);
         cout << command;
-    }*/
-    //cout << endl << endl;
-	return pkt;
+        return command;
+    }
+    cout << endl << endl;
+	free(buffer);
+	return 0;
 }
 
-void *Communication_server::receive_commands(int sockfd)
+void *Communication_server::receive_commands(int sockfd, string username)//, vector<Connected_client> *connected_clients)
 {
-    bool _exit = false;
-    while(!_exit) // TODO: ENQUANTO USUARIO NÃO FECHA
+    //printf("\n\nMY ID IS: %p\nMY SOCKFD IS: %i", &buffer, sockfd);
+    bool close_thread = false;
+    while(!close_thread) // TODO: ENQUANTO USUARIO NÃO FECHA
     {
         // Wait for a command
-        cout << "\nwaiting for command\n";
-        struct packet *pkt = receive_payload(sockfd);
-        while(pkt->length == 0)
-        {
-            pkt = receive_payload(sockfd);
+        cout << endl << sockfd << ": waiting for command\n";
+        struct packet pkt;
+        int command = receive_payload(sockfd, &pkt, true);
+        cout << "\n\nALGUMA COISA RECEBEU\n\n";
+        cout << "cpmmand: " << command << endl;
+        cout << "pkt.length: " << pkt.length;
+        
+        
+        
+        // If server is trying to close, send -1 to the client. Otherwise, send 1
+        //to signal that the command was received
+        if(closing_server){
+            send_int(sockfd, -1);
+            command = 7;
         }
-        int command;
-        memcpy(&command, pkt->_payload, pkt->length);
-        //cout << "command received: " << command << endl;
+        else{
+            send_int(sockfd, 1);
+        }
         
         switch(command)
         {
             case 1: // Upload to server
             {
-                cout << "\ncommand 1 received\n";
+                cout << endl << sockfd << ": command 1 received\n";
                 
                 string path = getenv("HOME");
                 // Receive the file name
-                string filename = receive_payload(sockfd)->_payload;
+                receive_payload(sockfd, &pkt, false);
+                string filename = pkt._payload;
                 path = path + "/server_sync_dir_" + username + "/" + filename;
-                cout << "String path: " << path << endl;
+                //cout << "String path: " << path << endl;
                 
                 // Receive mtime
-                time_t mtime = *(time_t*)receive_payload(sockfd)->_payload;
-                cout << "mtime: " << mtime << endl;
+                receive_payload(sockfd, &pkt, false);
+                time_t mtime = *(time_t*)pkt._payload;
+                //cout << "mtime: " << mtime << endl;
                 
                 update_watched_file(filename, mtime);
                 
@@ -211,11 +140,12 @@ void *Communication_server::receive_commands(int sockfd)
             }
             case 2: // Download from server
             {
-                cout << "\ncommand 2 received\n";
+                cout << endl << sockfd << ": command 2 received\n";
                 
                 string path = getenv("HOME");
                 // Receive the file name
-                string filename = receive_payload(sockfd)->_payload;
+                receive_payload(sockfd, &pkt, false);
+                string filename = pkt._payload;
                 path = path + "/server_sync_dir_" + username + "/" + filename;
                 
                 //Send mtime
@@ -230,12 +160,13 @@ void *Communication_server::receive_commands(int sockfd)
             }
             case 3: // Delete file
             {
-                cout << "\ncommand 2 received\n";
+                cout << endl << sockfd << ": command 2 received\n";
                 
                 string path = getenv("HOME");
-                string filename = receive_payload(sockfd)->_payload;
+                receive_payload(sockfd, &pkt, false);
+                string filename = pkt._payload;
                 path = path + "/server_sync_dir_" + username + "/" + filename;
-                cout << "String path: " << path;
+                //cout << "String path: " << path;
                 delete_file(path);
                 remove_watched_file(filename);
                 
@@ -243,7 +174,7 @@ void *Communication_server::receive_commands(int sockfd)
             }
             case 4: // List server
             {
-                cout << "\ncommand 4 received\n";
+                cout << endl << sockfd << ": command 4 received\n";
 		        
                 string path = getenv("HOME");
                 path = path + "/server_sync_dir_" + username;
@@ -271,7 +202,7 @@ void *Communication_server::receive_commands(int sockfd)
             }
             case 6: // Get sync_dir
             {
-                cout << "\ncommand 6 received\n";
+                cout << endl << sockfd << ": command 6 received\n";
                 
                 // Open sync_dir folder
                 string path = getenv("HOME");
@@ -290,7 +221,7 @@ void *Communication_server::receive_commands(int sockfd)
                 
                 // Send number of files to the client
                 string number_of_files_str = to_string(number_of_files);
-                cout << "\nnumber of files: " << number_of_files_str << endl;
+                //cout << "\nnumber of files: " << number_of_files_str << endl;
                 send_string(sockfd, number_of_files_str);
                 
                 // Send the name of each file and its mtime
@@ -312,12 +243,15 @@ void *Communication_server::receive_commands(int sockfd)
             }
             case 7: // Exit
             {
-                cout << "\ncommand 7 received\n";
+                // If the server chose to exit, the client did not send command 7
+                if(!closing_server)
+                    cout << endl << sockfd << ": command 7 received\n";
                 
                 close(sockfd);
-                cout << "\nclient " << username << " disconnected\n";
-                _exit = true;
+                cout << endl << sockfd << ": client " << username << " disconnected\n";
                 
+                close_thread = true;
+	
                 // The moment the thread exits this function, it will be terminated
                 break;
             }
@@ -331,12 +265,13 @@ void *Communication_server::receive_commands(int sockfd)
 void *Communication_server::receive_commands_helper(void* void_args)
 {
     th_args* args = (th_args*)void_args;
-    ((Communication_server*)args->obj)->receive_commands(*args->newsockfd);
+    ((Communication_server*)args->obj)->receive_commands(*args->newsockfd, *args->username);
     return 0;
 }
 
 void Communication_server::send_string(int sockfd, string str)
 {
+    char* buffer = (char*)malloc(packet_size);
     // If the string is too large to send in one go, divide it into separate packets.
     // Get the number of packets necessary (total_size)
     float total_size_f = (float)str.size()/(float)max_payload;
@@ -419,10 +354,53 @@ void Communication_server::send_string(int sockfd, string str)
         //cout << "bytes sent: " << bytes_sent << endl;
         //------------------------------------------------------------------------
     }
+    //free(buffer);
+}
+
+void Communication_server::send_int(int sockfd, int number)
+{    
+    char* buffer;// = (char*)malloc(packet_size);
+    // Create the packet that will be sent
+    struct packet pkt;
+    pkt.type = 0;
+    pkt.seqn = 1;
+    pkt.total_size = 1;
+    pkt.length = sizeof(int);
+    pkt._payload = (const char*)&number;
+
+    // Point buffer to pkt
+    buffer = (char*)&pkt;
+
+    //------------------------------------------------------------------------
+    // SEND HEADER
+    //------------------------------------------------------------------------
+    // write in the socket
+    int bytes_sent = 0;
+    while (bytes_sent < header_size)
+    {
+        int n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
+        if (n < 0) 
+            printf("ERROR writing to socket\n");
+        bytes_sent += n;
+    }
+
+    //------------------------------------------------------------------------
+    // SEND PAYLOAD
+    //------------------------------------------------------------------------
+    // write in the socket
+    bytes_sent = 0;
+    while (bytes_sent < pkt.length)
+    {
+        int n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+        if (n < 0) 
+            printf("ERROR writing to socket\n");
+        bytes_sent += n;
+    }
 }
 
 void Communication_server::send_file(int sockfd, string path)
 {
+    char* buffer = (char*)malloc(packet_size);
     //------------------------------------------------------------------------
     // SEND FILE
     //------------------------------------------------------------------------
@@ -523,19 +501,21 @@ void Communication_server::send_file(int sockfd, string path)
 }
 
 
-void Communication_server::receive_file(int sockfd, string path) {
+void Communication_server::receive_file(int sockfd, string path)
+{
     FILE *fp = fopen(path.c_str(), "w");
     if(fp==NULL)
         cout << "\nERROR OPENING " << path << endl; 
 
     // Get the number of packets to be received
     // To do that, we must receive the first packet
-    struct packet* pkt = receive_payload(sockfd);
-    uint32_t total_size = pkt->total_size;
+    struct packet pkt;
+    receive_payload(sockfd, &pkt, false);
+    uint32_t total_size = pkt.total_size;
     //cout << "\n\nTHE SERVER WILL RECEIVE " << total_size << " PACKETS!\n";
     // Write the first payload to the file
-    ssize_t bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
-    if (bytes_written_to_file < pkt->length)
+    ssize_t bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
+    if (bytes_written_to_file < pkt.length)
         cout << "\nERROR WRITING TO " << path << endl;
     
     //cout << bytes_written_to_file << " bytes written to file" << endl;
@@ -546,10 +526,10 @@ void Communication_server::receive_file(int sockfd, string path) {
     for(i=2; i<=total_size; i++)
     {
         // Receive payload
-        pkt = receive_payload(sockfd);
+        receive_payload(sockfd, &pkt, false);
         // Write it to the file
-        bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
-        if (bytes_written_to_file < pkt->length)
+        bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
+        if (bytes_written_to_file < pkt.length)
             cout << "\nERROR WRITING TO " << path << endl;
         //cout << "\n" << bytes_written_to_file << " bytes written to file\n";
     }

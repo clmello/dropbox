@@ -235,6 +235,7 @@ int main(int argc, char *argv[])
     
     
     
+    
     // TESTING LIST_SERVER
     
     //------------------------------------------------------------------------
@@ -292,7 +293,11 @@ int main(int argc, char *argv[])
     
     
     
-    // TESTING FILE UPLOAD
+    
+    
+    
+    
+    // TESTING DELETE FILE
     
     //------------------------------------------------------------------------
     // SEND COMMAND
@@ -303,7 +308,7 @@ int main(int argc, char *argv[])
     pkt.seqn = 1;
     pkt.total_size = 1;
     pkt.length = sizeof(int);
-    command = 1;
+    command = 3;
 	pkt._payload = (const char*)&command;
 	// send header
 	/* write in the socket */
@@ -328,7 +333,6 @@ int main(int argc, char *argv[])
 		bytes_sent += n;
     }
     cout << "bytes sent: " << bytes_sent << endl;
-    //sleep(5);
     //------------------------------------------------------------------------
     
     // Receive return int
@@ -337,9 +341,6 @@ int main(int argc, char *argv[])
         exit(0);
     }
     
-    
-    // To send a file, you must first send the file name, and then the file
-    // Of course, you also need to send the upload command before the file name
     //------------------------------------------------------------------------
     // SEND FILENAME
     //------------------------------------------------------------------------
@@ -381,154 +382,11 @@ int main(int argc, char *argv[])
     cout << "bytes sent: " << bytes_sent << endl;
     //------------------------------------------------------------------------
     
-    //------------------------------------------------------------------------
-    // SEND MTIME
-    //------------------------------------------------------------------------
-    time_t mtime = std::time(0);
-    cout << "\nmtime: " << mtime << endl;
-    
-    payload = (char*)&mtime;
-    
-    // Create the packet that will be sent
-    pkt.type = 0;
-    pkt.seqn = 1;
-    pkt.total_size = 1;
-    pkt.length = sizeof(time_t);
-	pkt._payload = payload;
-    std::cout << "\n\nfilename: " << pkt._payload << std::endl;
-    
-	// copy pkt to buffer
-	buffer = (char*)&pkt;
-	
-	// send header
-	/* write in the socket */
-	bytes_sent = 0;
-	while (bytes_sent < header_size)
-	{
-	    n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
-        if (n < 0) 
-		    printf("ERROR writing to socket\n");
-		bytes_sent += n;
-    }
-    cout << "bytes sent: " << bytes_sent << endl;
-    
-    //send payload
-	/* write in the socket */
-	bytes_sent = 0;
-	while (bytes_sent < pkt.length)
-	{
-	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
-        if (n < 0) 
-		    printf("ERROR writing to socket\n");
-		bytes_sent += n;
-    }
-    cout << "bytes sent: " << bytes_sent << endl;
-    //------------------------------------------------------------------------
-    
-    //------------------------------------------------------------------------
-    // SEND FILE
-    //------------------------------------------------------------------------
-    string path = "/home/alack/Downloads/sync_dir_vinicius/teste.txt";
-    FILE *fp = fopen(path.c_str(), "r");
-    if(fp == NULL)
-        cout << "Error opening file " << path << endl;
-    
-    // Get the size of the file
-    fseek(fp, 0 , SEEK_END);
-    long total_payload_size = ftell(fp);
-    // Go back to the beggining
-    fseek(fp, 0 , SEEK_SET);
-    
-    // The type of the packet being sent is 0 (data)
-    uint16_t type = 0;
-    
-    // If the data is too large to send in one go, divide it into separate packets.
-    // Get the number of packets necessary (total_size)
-    float total_size_f = (float)total_payload_size/(float)payload_size;
-    int total_size = total_size_f;
-    if (total_size_f > total_size)
-        total_size ++;
-    cout << "\n\ntotal size: " << total_size;
-    
-    int i;
-    int total_bytes_sent = 0;
-    cout << "\n\nenviando: " << endl;
-	printf("%.*s\n", payload_size, buffer);
-    
-    // Send each packet
-    // If only one packet will be sent, the program will go through the loop only once
-    for(i=1; i<=total_size; i++)
-    {
-        // Create the packet that will be sent
-        struct packet pkt;
-        pkt.type = type;
-        pkt.seqn = i;
-        pkt.total_size = total_size;
-        
-        // If the chunk of the file that will be sent is smaller
-        //than the max payload size, send only the size needed
-        if(payload_size > total_payload_size - (total_bytes_sent - header_size*(i-1)))
-            pkt.length = total_payload_size - (total_bytes_sent - header_size*(i-1));
-        else
-            pkt.length = payload_size;
-        
-        cout << endl << total_bytes_sent << " bytes have been sent";
-        cout << endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
-        
-        // Read pkt.length bytes from the file
-        fread(file_buffer, 1, pkt.length, fp);
-        // Save it to pkt._payload
-        pkt._payload = file_buffer;
-        
-        // Point buffer to pkt
-        buffer = (char*)&pkt;
-        
-        //------------------------------------------------------------------------
-        // SEND HEADER
-        //------------------------------------------------------------------------
-        // write in the socket
-        int bytes_sent = 0;
-        while (bytes_sent < header_size)
-        {
-            int n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
-            if (n < 0) 
-	            printf("ERROR writing to socket\n");
-	        bytes_sent += n;
-        }
-        total_bytes_sent += bytes_sent;
-        cout << "\n\nHEADER!\n";
-        cout << "bytes sent: " << bytes_sent << endl;
-        cout << "type: " << pkt.type;
-        cout << "\nseqn: " << pkt.seqn;
-        cout << "\ntotal_size: " << pkt.total_size;
-        cout << "\npayload_size: " << pkt.length << endl;
-        
-        //------------------------------------------------------------------------
-        // SEND PAYLOAD
-        //------------------------------------------------------------------------
-        // write in the socket
-        bytes_sent = 0;
-        while (bytes_sent < pkt.length)
-        {
-            int n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
-            if (n < 0) 
-	            printf("ERROR writing to socket\n");
-	        bytes_sent += n;
-        }
-        total_bytes_sent += bytes_sent;
-        cout << "PACKET!\n";
-        cout << "\npayload(char*): ";
-        printf("%.*s\n", payload_size, pkt._payload);
-        cout << "bytes sent: " << bytes_sent << endl;
-        //------------------------------------------------------------------------
-    }
     
     
     cout << "\nsleeping";
-    cout << "\n";
-    sleep(10);
+    sleep(5);
     cout << "\nwoke up\n";
-    
     
     
     // TESTING EXIT
@@ -571,6 +429,7 @@ int main(int argc, char *argv[])
     //------------------------------------------------------------------------
     
     cout << "\nwaiting return";
+    
     // Receive return int
     if(receive_int(sockfd) < 0){
         cout << "\nServer closed\n";

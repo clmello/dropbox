@@ -14,6 +14,13 @@
 #include <netinet/in.h>
 #include <pthread.h>
 
+typedef	struct	packet{
+		uint16_t	type;			//Tipo do pacote (p.ex. DATA | CMD)
+		uint16_t	seqn;			//Número de sequência
+		uint32_t	total_size;		//Número total de fragmentos
+		uint16_t	length;			//Comprimento do payload
+		const char*	_payload;		//Dados do pacote
+	} packet;
 
 class Communication_client {
 private:
@@ -22,24 +29,25 @@ private:
 	int packet_size;
 	int sockfd;
 	char* buffer;
+	packet* header;
+	size_t header_address;
+	size_t buffer_address;
 
 public:
-	typedef	struct	packet{
-		uint16_t	type;			//Tipo do pacote (p.ex. DATA | CMD)
-		uint16_t	seqn;			//Número de sequência
-		uint32_t	total_size;		//Número total de fragmentos
-		uint16_t	length;			//Comprimento do payload
-		const char*	_payload;		//Dados do pacote
-	} packet;
 
 	Communication_client();
 	bool connect_client_server(Client client);
 	void send_command(int command);
-	void upload_command(int command, std::string filename, std::string path);
 	void send_filename(std::string filename);
 	void send_file(std::string filename, std::string path);
- 	packet* receive_header(int sockfd);
-	packet* receive_payload(int sockfd);
+	void send_mtime(time_t mtime);
+ 	packet* receive_header();
+	packet* receive_payload();
+	void receive_file(std::string path);
+	long get_file_size(FILE *fp);
+
+	void upload_command(int command, std::string filename, std::string path, time_t mtime);
+	Client::file download_command(int command, std::string filename, std::string path, Client::file download_file);
 	void list_server_command(int command);
 	void exit_command(int command);
 };

@@ -64,6 +64,15 @@ void Client::setRunning(bool running) {
     this->running = running;
 }
 
+time_t Client::get_mtime(std::string filename) {
+    for(int i=0; i < this->watched_files.size(); i++)
+    {
+        if(filename == this->watched_files[i].name)
+            return this->watched_files[i].mtime;
+    }
+    return -1;
+}
+
 void Client::printWatchedFies() {
     if(this->watched_files.size() > 0) {
         std::cout << "\n\nWATCHED FILES:\n";
@@ -193,7 +202,7 @@ void *Client::check_files_loop() {
             closedir(dir);
         }
         //printWatchedFies();
-        sleep(10);
+        sleep(40);
     }   
 }
 
@@ -227,7 +236,6 @@ void Client::userInterface() {
     bool running = true;
     std::string input;
     std::string command;
-    std::string argument;
 
     std::cout << "Digite um dos comandos a seguir:\n\n";
     std::cout << " upload <path/filename.ext>\n";
@@ -245,16 +253,28 @@ void Client::userInterface() {
 
         if(command == "upload") {
             std::cout << "Upload " << input << "\n";
-            communication.upload_command(1, input, this->dir);
+            std::cout << "\nVou entrar na mtime!";
+            time_t mtime = get_mtime(input);
+            std::cout << "\nmtime: " << mtime << "\n";
+            communication.upload_command(1, input, this->dir, mtime);
+            std::cout << "\nEnviou!\n";
             // metodo pra upload
         }
         else if(command == "download") {
-            std::cout << "Download " << argument << "\n";
-            //communication.send_command(2);
+            std::cout << "\nDownload " << input << "\n";
+            std::string path = getenv("HOME");
+			path = path + '/' + input;
+            std::cout << "\npath: " << path;
+            std::cout << "\nfuck you download";
+            file auxfile;
+            file downloadFile = communication.download_command(2, input, path, auxfile);
+            std::cout << "\nJá passei pela download_command e recebi de volta:";
+            std::cout << "\ndownloadFile.name: " << downloadFile.name;
+            std::cout << "\ndownloadFule.mtime" << downloadFile.mtime;
             // metodo pra download
         }
         else if(command == "delete") {
-            std::cout << "Delete " << argument << "\n";
+            std::cout << "Delete " << input << "\n";
 /*
             if (argument == "")
                 std::cout << "Delete needs argument <file>";

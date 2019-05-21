@@ -14,8 +14,6 @@ private:
     int command;
 
     bool running;
-    struct file{time_t mtime; std::string name;};
-    std::vector<file> watched_files;
 
     pthread_t check_files_thread;
     //Communication_client communication;
@@ -24,6 +22,9 @@ public:
     struct th_args{
 		void* obj = NULL;
     };
+
+    struct file{time_t mtime; std::string name;};
+    std::vector<file> watched_files;
 
     Client(std::string username, std::string hostname, int port);
 
@@ -39,6 +40,7 @@ public:
     int getCommand();
     void setRunning(bool running);
     pthread_t* getCheckFilesThread();
+    time_t get_mtime(std::string filename);
 
     // rest
     void printWatchedFies();

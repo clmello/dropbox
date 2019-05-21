@@ -1,6 +1,8 @@
 #ifndef CONNECTED_CLIENT_H
 #define CONNECTED_CLIENT_H
 
+#include "Communication_server.h"
+
 #include <iostream>
 #include <string.h>
 #include <vector>
@@ -11,17 +13,20 @@ using namespace std;
 class Connected_client{
 
 	public:
-		Connected_client(string username, int sockfd, int num_connections);
+		Connected_client(string username, int sockfd, int num_connections, int port, int header_size, int max_payload);
 
-		string get_username();
+		string *get_username();
 		int *get_sockfd();
 		int get_num_connections();
 		pthread_t get_thread();
 		
+		// This method MUST BE CALLED after the creation of an object
 		void set_thread(pthread_t thread);
 
 		// Returns num_connections+1 if num_connections+1 < max_connections, -1 otherwise
 		int new_connection();
+		
+		Communication_server com;
 
 	private:
 		string username;

@@ -1,14 +1,16 @@
 #include "connected_client.h"
 
-Connected_client::Connected_client(string username, int sockfd, int num_connections)
+Connected_client::Connected_client(string username, int sockfd, int num_connections, int port, int header_size, int max_payload)
 {
 	this->username = username;
 	this->sockfd = sockfd;
 	this->num_connections = num_connections;
 	this->max_connections = 2;
+	
+	com.Init(port, header_size, max_payload);
 }
 
-string Connected_client::get_username() {return username;}
+string *Connected_client::get_username() {return &username;}
 
 int *Connected_client::get_sockfd() {return &sockfd;}
 

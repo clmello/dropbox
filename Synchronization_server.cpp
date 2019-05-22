@@ -76,8 +76,6 @@ void *Synchronization_server::accept_connections()
             
 	    // Create the new connected client
 	    Connected_client new_client(new_client_username, newsockfd, num_connections, port, header_size, max_payload);
-	    //cout << "\n&thread_finished de " << new_client_username << ": ";
-        //printf("%p\n", new_client.get_thread_finished());
         
         if(num_connections < 0){ // Too many connections
             cout << "\nClient " << new_client_username << " failed to connect. Too many connections.";
@@ -99,17 +97,18 @@ void *Synchronization_server::accept_connections()
 		    connected_clients.push_back(new_client);
 		    
 		    // Add an entry to the client_threads_finished vector
-		    client_threads_finished.push_back(0);
+            int* address = (int*)malloc(sizeof(int));
+            *address = 0;
+		    threads_finished_address.push_back(address);
 
             // Create a struct with the arguments to be sent to the new thread
             struct th_args args;
             args.obj = &new_client.com;
             args.newsockfd = new_client.get_sockfd();
             args.username = new_client.get_username();
-            //bool *pointer = client_threads_finished.data();
-            args.thread_finished = &client_threads_finished.data()[client_threads_finished.size() - 1];
-	    cout << "\n&thread_finished de " << new_client_username << ": " << &client_threads_finished.data()[client_threads_finished.size() - 1];
-	    cout << "\nvalor: " << client_threads_finished.data()[client_threads_finished.size() - 1];
+            args.thread_finished = address;
+	    cout << "\n&thread_finished de " << new_client_username << " (client_threads_finished[" << threads_finished_address.size() - 1 << "]): " << address;
+	    cout << "\nvalor: " << *address;
             // TODO: Mandar vector pra thread pra que ela possa se retirar quando terminar. Não esquecer de decrementar as conexões ativas
             //args.connected_clients = &connected_clients;
 
@@ -121,21 +120,14 @@ void *Synchronization_server::accept_connections()
             
             // Set the new connected client thread
             connected_clients.back().set_thread(client_thread);
-		    //connected_clients.push_back(new_client);
         }
     }
 }
 
 void Synchronization_server::close_server()
 {
-    cout << "\n\nENTREI NO CLOSE_SERVER";
-    cout << "\ntamanho do connected_clients: " << connected_clients.size();
     // Close all client sockets and join all client threads
     for(int i=0; i<connected_clients.size(); i++){
-        
-        cout << "\nthread_finished: " << client_threads_finished[i];
-        cout << "\nclient[" << i << "]:  " << *connected_clients[i].get_username() << "\nis_finished: " << client_threads_finished[i];
-        cout << "\n\ni: " << i;
         cout << "\njoining thread " << connected_clients[i].get_thread();
         pthread_join(connected_clients[i].get_thread(), NULL);
         cout << "\nclosing socket " << *connected_clients[i].get_sockfd();
@@ -152,14 +144,8 @@ void Synchronization_server::close_server()
 void Synchronization_server::check_finished_threads()
 {
     for(int i=0; i<connected_clients.size(); i++){
-        //cout << "\nclient[" << i << "]:  " << *connected_clients[i].get_username() << "\nis_finished: " << connected_clients[i].is_finished();
-        if(client_threads_finished[i]){
-            
-           /* for(int i=0; i<connected_clients.size(); i++){
-                vector <bool>::iterator it = client_threads_finished.begin()+i;
-	            cout << "\ncheck_finished_threads\n&thread_finished de " << *connected_clients[i].get_username() << ": " << &it;
-                }*/
-            cout << "\ni: " << i;
+        int *n = (int*)threads_finished_address[i];
+        if(*n){
             cout << "\nclient " << *connected_clients[i].get_username() << " disconnected\n";
             cout << "\njoining thread " << connected_clients[i].get_thread() << "......";
             pthread_join(connected_clients[i].get_thread(), NULL);
@@ -167,10 +153,9 @@ void Synchronization_server::check_finished_threads()
             cout << "\nclosing socket " << *connected_clients[i].get_sockfd() << "......";
             close(*connected_clients[i].get_sockfd());
             cout << "DONE!";
-            cout << "\nvector size before: " << connected_clients.size();
             connected_clients.erase(connected_clients.begin()+i);
-            cout << "\nvector size after: " << connected_clients.size();
-            cout << "\n";
+            free(threads_finished_address[i]);
+            threads_finished_address.erase(threads_finished_address.begin()+i);
         }
     }
 }

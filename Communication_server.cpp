@@ -97,9 +97,6 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
         cout << endl << sockfd << ": waiting for command";
         struct packet pkt;
         int command = receive_payload(sockfd, &pkt, true);
-        //cout << "\n\nALGUMA COISA RECEBEU\n\n";
-        //cout << "cpmmand: " << command << endl;
-        //cout << "pkt.length: " << pkt.length;
         
         
         
@@ -247,14 +244,10 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 if(!closing_server)
                     cout << endl << sockfd << ": command 7 received";
                 
-                //close(sockfd);
-                //cout << "\nthread_finished: " << *thread_finished << endl;
-                //cout << endl << sockfd << ": client " << username << " disconnected\n";
-                
                 close_thread = true;
+                
+                //Tell the main thread that this thread has finished
                 *thread_finished = 1;
-                cout << endl << sockfd << ": thread_finished: " << *thread_finished << endl;
-                //printf("\n\n&thread_finished: %p", thread_finished);
                 
                 // The moment the thread exits this function, it will be terminated
                 break;
@@ -264,7 +257,6 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
             }
         }
 	}
-	cout << endl << endl << sockfd << ": SAIU DO WHILE!!!\n\n";
 }
 
 void *Communication_server::receive_commands_helper(void* void_args)

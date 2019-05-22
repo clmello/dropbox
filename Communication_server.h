@@ -26,6 +26,15 @@ typedef	struct	packet{
 }	packet;	
 
 
+
+struct th_args{
+	void* obj = NULL;
+	int* newsockfd = NULL;
+	string* username = NULL;
+	int* thread_finished = NULL;
+};
+		
+
 class Communication_server
 {
 	public:
@@ -63,14 +72,6 @@ class Communication_server
 		void update_watched_file(string filename, time_t mtime);
 		time_t get_mtime(string filename);
 		void remove_watched_file(string filename);
-
-
-		struct th_args{
-			void* obj = NULL;
-			int* newsockfd = NULL;
-			string* username = NULL;
-			int* thread_finished = NULL;
-		};
 };
 
 #endif // COMMUNICATION_SERVER_H

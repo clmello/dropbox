@@ -39,7 +39,7 @@ class Synchronization_server
 		struct file{time_t mtime; string name;};
 		vector<file> watched_files;
 		vector<Connected_client> connected_clients;
-		vector<int> client_threads_finished;
+		vector<int*> threads_finished_address;
 		
 		void *accept_connections();
 		void close_server();
@@ -48,14 +48,6 @@ class Synchronization_server
 		
 		packet* receive_payload(int sockfd);// Receives the _payload of the packet from the client and returns a packet struct containing the _payload
 		packet* receive_header(int sockfd);	// Receives the header of the packet from the client and returns a packet struct containing the header
-
-
-		struct th_args{
-			void* obj = NULL;
-			int* newsockfd = NULL;
-			string* username = NULL;
-			int* thread_finished = NULL;
-		};
 };
 
 #endif // SYNCHRONIZATION_SERVER_H

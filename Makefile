@@ -4,6 +4,7 @@ CFLAGS = $(FLAGS) $(INCLUDE)
 
 UTILS_SERVER = 	Communication_server.o \
 				connected_client.o \
+				Synchronization_server.o \
 
 UTILS_CLIENT = Communication_client.o \
 

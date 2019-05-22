@@ -296,12 +296,13 @@ void Client::userInterface() {
         }
         else if(command == "list_server") {
             std::cout << "List Server \n";
-            communication.send_command(4);
+            communication.list_server_command(4);
             // metodo pra list_server
         }
 
         // 
         else if(command == "list_client") {
+            // vai ter que se comunicar com o server pra receber o int de voltar, mas só pra isso
             std::cout << "List Client \n";
              DIR *fileDir; 
             struct dirent *lsdir;
@@ -322,7 +323,7 @@ void Client::userInterface() {
             // metodo pra get_sync_dir
         }
         else if(command == "exit") {
-            communication.send_command(7);
+            communication.exit_command(7);
             running = false;
             pthread_join(this->check_files_thread, NULL);
             // metodo pra exit

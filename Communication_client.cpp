@@ -91,8 +91,13 @@ bool Communication_client::connect_client_server(Client client) {
     }
     std::cout << "bytes sent: " << bytes_sent << std::endl;
 
-	//close(sockfd);
-	connected = true;
+
+    if(receive_int() < 0) {
+        std::cout << "\nConnection refused\nToo many connections\n";
+        return connect;
+    } else {
+        connected = true;
+    }
 	return connected;
 }
 
@@ -339,19 +344,7 @@ packet* Communication_client::receive_payload() {
 
     std::cout << "\nSaiu do while do receive_payload";
 	pkt->_payload = (const char*)buffer;
-/*
-	if(pkt->type != 1){ // If the packet is not a command
-	    std::cout << "\npayload(char*): ";
-	    printf("%.*s\n", payload_size, pkt->_payload);
-    }
-    else{ // If the packet is a command
-	    std::cout << "payload(int): ";
-        int command;
-        memcpy(&command, pkt->_payload, pkt->length);
-        std::cout << command;
-    }
-    std::cout << std::endl << std::endl;
-*/
+
     return pkt;
 }
 
@@ -411,6 +404,13 @@ packet* Communication_client::receive_header() {
 	return header;
 }
 
+int Communication_client::receive_int() {
+    packet *pkt = receive_payload();
+    int integer;
+    memcpy(&integer, pkt->_payload, pkt->length);
+    return integer;
+}
+
 void Communication_client::receive_file(std::string path) {
     FILE *fp = fopen(path.c_str(), "w");
     if(fp==NULL)
@@ -466,6 +466,13 @@ void Communication_client::upload_command(int command, std::string filename, std
 	//send command upload (1)
 	send_command(command);
 
+    // resposta do server
+    // Receive return int
+    if(receive_int() < 0){
+        std::cout << "\nServer closed\n";
+        exit(0);
+    }
+
 	// send filename
 	send_filename(filename);
 
@@ -483,6 +490,13 @@ Client::file Communication_client::download_command(int command, std::string fil
     
     // send command download (2)
 	send_command(command);
+
+    // resposta do server
+    // Receive return int
+    if(receive_int() < 0){
+        std::cout << "\nServer closed\n";
+        exit(0);
+    }
 
 	// send filename
 	send_filename(filename);
@@ -509,11 +523,23 @@ Client::file Communication_client::download_command(int command, std::string fil
 void Communication_client::list_server_command(int command) {
     send_command(command);
 
+    // Receive return int
+    if(receive_int() < 0){
+        std::cout << "\nServer closed\n";
+        exit(0);
+    }
+
     std::cout << "\n\nlist_server: " << receive_payload()->_payload << std::endl << std::endl;
 }
 
 void Communication_client::exit_command(int command) {
     send_command(7);
+
+    // Receive return int
+    if(receive_int() < 0){
+        std::cout << "\nServer closed\n";
+        exit(0);
+    }
 
     close(sockfd);
 }

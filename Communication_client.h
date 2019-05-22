@@ -44,6 +44,7 @@ public:
  	packet* receive_header();
 	packet* receive_payload();
 	void receive_file(std::string path);
+	int receive_int();
 	long get_file_size(FILE *fp);
 
 	void upload_command(int command, std::string filename, std::string path, time_t mtime);

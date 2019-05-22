@@ -19,6 +19,8 @@ class Connected_client{
 		int *get_sockfd();
 		int get_num_connections();
 		pthread_t get_thread();
+		//bool *get_thread_finished();
+		//bool is_finished();
 		
 		// This method MUST BE CALLED after the creation of an object
 		void set_thread(pthread_t thread);
@@ -33,7 +35,9 @@ class Connected_client{
 		int sockfd;
 		int num_connections;
 		int max_connections;
+		
 		pthread_t thread;
+		//bool thread_finished;
 
 };
 

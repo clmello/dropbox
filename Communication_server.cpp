@@ -18,7 +18,7 @@ void Communication_server::Init(int port, int header_size, int max_payload)
 void Communication_server::receive_header(int sockfd, struct packet *header)
 {
 	char *buffer = (char*)malloc(header_size);
-    cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_HEADER\n\n";
+    //cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_HEADER\n\n";
 	int bytes_received=0;
 	//cout << "\n\nbytes lidos: "<<bytes_received;
     while(bytes_received < header_size)
@@ -33,7 +33,7 @@ void Communication_server::receive_header(int sockfd, struct packet *header)
             printf("ERROR reading from socket");
             
         bytes_received+=n;
-		cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
+		//cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
 	}
 	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
 	{
@@ -45,10 +45,10 @@ void Communication_server::receive_header(int sockfd, struct packet *header)
 	    memcpy(&header->seqn, &buffer[2], 2);
 	    memcpy(&header->total_size, &buffer[4], 4);
 	    memcpy(&header->length, &buffer[8], 2);
-	    cout << "\n" << sockfd << ": type: " << header->type;
-	    cout << "\n" << sockfd << ": seqn: " << header->seqn;
-	    cout << "\n" << sockfd << ": total_size: " << header->total_size;
-	    cout << "\n" << sockfd << ": payload_size: " << header->length << endl;
+	    //cout << "\n" << sockfd << ": type: " << header->type;
+	    //cout << "\n" << sockfd << ": seqn: " << header->seqn;
+	    //cout << "\n" << sockfd << ": total_size: " << header->total_size;
+	    //cout << "\n" << sockfd << ": payload_size: " << header->length << endl;
     }
     free(buffer);
 }
@@ -56,7 +56,7 @@ void Communication_server::receive_header(int sockfd, struct packet *header)
 int Communication_server::receive_payload(int sockfd, struct packet *pkt, bool is_command)
 {
 	char *buffer = (char*)malloc(max_payload);
-    cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_PAYLOAD\n\n";
+    //cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_PAYLOAD\n\n";
     receive_header(sockfd, pkt);
 	int bytes_received=0;
     while(bytes_received < pkt->length)
@@ -67,39 +67,39 @@ int Communication_server::receive_payload(int sockfd, struct packet *pkt, bool i
             printf("ERROR reading from socket");
             
         bytes_received+=n;
-		cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received<<endl;
+		//cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received<<endl;
 	}
-	cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
+	//cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
 	pkt->_payload = (const char*)buffer;
 	if(pkt->type != 1){ // If the packet is not a command
-	    cout << "\n" << sockfd << ": payload(char*): ";
-	    printf("%.*s\n", max_payload, pkt->_payload);
+	    //cout << "\n" << sockfd << ": payload(char*): ";
+	    //printf("%.*s\n", max_payload, pkt->_payload);
     }
     else{ // If the packet is a command
-	    cout << "\n" << sockfd << ": payload(int): ";
+	    //cout << "\n" << sockfd << ": payload(int): ";
         int command;
         memcpy(&command, pkt->_payload, pkt->length);
-        cout << command;
+        //cout << command;
         return command;
     }
-    cout << endl << endl;
+    //cout << endl << endl;
 	free(buffer);
 	return 0;
 }
 
-void *Communication_server::receive_commands(int sockfd, string username)//, vector<Connected_client> *connected_clients)
+void *Communication_server::receive_commands(int sockfd, string username, int *thread_finished)//, vector<Connected_client> *connected_clients)
 {
-    //printf("\n\nMY ID IS: %p\nMY SOCKFD IS: %i", &buffer, sockfd);
+    printf("\n\nMY &THREAD_FINISHED IS: %p\nMY SOCKFD IS: %i", thread_finished, sockfd);
     bool close_thread = false;
     while(!close_thread) // TODO: ENQUANTO USUARIO NÃO FECHA
     {
         // Wait for a command
-        cout << endl << sockfd << ": waiting for command\n";
+        cout << endl << sockfd << ": waiting for command";
         struct packet pkt;
         int command = receive_payload(sockfd, &pkt, true);
-        cout << "\n\nALGUMA COISA RECEBEU\n\n";
-        cout << "cpmmand: " << command << endl;
-        cout << "pkt.length: " << pkt.length;
+        //cout << "\n\nALGUMA COISA RECEBEU\n\n";
+        //cout << "cpmmand: " << command << endl;
+        //cout << "pkt.length: " << pkt.length;
         
         
         
@@ -117,7 +117,7 @@ void *Communication_server::receive_commands(int sockfd, string username)//, vec
         {
             case 1: // Upload to server
             {
-                cout << endl << sockfd << ": command 1 received\n";
+                cout << endl << sockfd << ": command 1 received";
                 
                 string path = getenv("HOME");
                 // Receive the file name
@@ -140,7 +140,7 @@ void *Communication_server::receive_commands(int sockfd, string username)//, vec
             }
             case 2: // Download from server
             {
-                cout << endl << sockfd << ": command 2 received\n";
+                cout << endl << sockfd << ": command 2 received";
                 
                 string path = getenv("HOME");
                 // Receive the file name
@@ -160,7 +160,7 @@ void *Communication_server::receive_commands(int sockfd, string username)//, vec
             }
             case 3: // Delete file
             {
-                cout << endl << sockfd << ": command 2 received\n";
+                cout << endl << sockfd << ": command 2 received";
                 
                 string path = getenv("HOME");
                 receive_payload(sockfd, &pkt, false);
@@ -174,7 +174,7 @@ void *Communication_server::receive_commands(int sockfd, string username)//, vec
             }
             case 4: // List server
             {
-                cout << endl << sockfd << ": command 4 received\n";
+                cout << endl << sockfd << ": command 4 received";
 		        
                 string path = getenv("HOME");
                 path = path + "/server_sync_dir_" + username;
@@ -202,7 +202,7 @@ void *Communication_server::receive_commands(int sockfd, string username)//, vec
             }
             case 6: // Get sync_dir
             {
-                cout << endl << sockfd << ": command 6 received\n";
+                cout << endl << sockfd << ": command 6 received";
                 
                 // Open sync_dir folder
                 string path = getenv("HOME");
@@ -245,13 +245,17 @@ void *Communication_server::receive_commands(int sockfd, string username)//, vec
             {
                 // If the server chose to exit, the client did not send command 7
                 if(!closing_server)
-                    cout << endl << sockfd << ": command 7 received\n";
+                    cout << endl << sockfd << ": command 7 received";
                 
-                close(sockfd);
-                cout << endl << sockfd << ": client " << username << " disconnected\n";
+                //close(sockfd);
+                //cout << "\nthread_finished: " << *thread_finished << endl;
+                //cout << endl << sockfd << ": client " << username << " disconnected\n";
                 
                 close_thread = true;
-	
+                *thread_finished = 1;
+                cout << endl << sockfd << ": thread_finished: " << *thread_finished << endl;
+                //printf("\n\n&thread_finished: %p", thread_finished);
+                
                 // The moment the thread exits this function, it will be terminated
                 break;
             }
@@ -260,12 +264,13 @@ void *Communication_server::receive_commands(int sockfd, string username)//, vec
             }
         }
 	}
+	cout << endl << endl << sockfd << ": SAIU DO WHILE!!!\n\n";
 }
 
 void *Communication_server::receive_commands_helper(void* void_args)
 {
     th_args* args = (th_args*)void_args;
-    ((Communication_server*)args->obj)->receive_commands(*args->newsockfd, *args->username);
+    ((Communication_server*)args->obj)->receive_commands(*args->newsockfd, *args->username, args->thread_finished);
     return 0;
 }
 

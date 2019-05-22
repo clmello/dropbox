@@ -6,6 +6,7 @@ Connected_client::Connected_client(string username, int sockfd, int num_connecti
 	this->sockfd = sockfd;
 	this->num_connections = num_connections;
 	this->max_connections = 2;
+	//this->thread_finished = false;
 	
 	com.Init(port, header_size, max_payload);
 }
@@ -17,6 +18,10 @@ int *Connected_client::get_sockfd() {return &sockfd;}
 int Connected_client::get_num_connections() {return num_connections;}
 
 pthread_t Connected_client::get_thread() {return thread;}
+
+//bool *Connected_client::get_thread_finished() {return &thread_finished;}
+
+//bool Connected_client::is_finished() {return thread_finished;}
 
 void Connected_client::set_thread(pthread_t thread) {this->thread = thread;}
 

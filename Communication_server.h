@@ -57,7 +57,7 @@ class Communication_server
 		vector<file> watched_files;
 		
 		void *accept_connections();
-		void *receive_commands(int sockfd, string username);
+		void *receive_commands(int sockfd, string username, int *thread_finished);
 		
 		bool file_is_watched(string filename);
 		void update_watched_file(string filename, time_t mtime);
@@ -69,6 +69,7 @@ class Communication_server
 			void* obj = NULL;
 			int* newsockfd = NULL;
 			string* username = NULL;
+			int* thread_finished = NULL;
 		};
 };
 

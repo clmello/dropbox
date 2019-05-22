@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
     pkt.type = 2;
     pkt.seqn = 1;
     pkt.total_size = 1;
-    pkt.length = 5;
+    pkt.length = 3;
 	pkt._payload = payload;
     std::cout << "\n\npayload: " << pkt._payload << std::endl;
     

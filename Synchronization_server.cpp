@@ -22,40 +22,43 @@ Synchronization_server::Synchronization_server(int port)
 
 void *Synchronization_server::accept_connections()
 {
-    int sockfd;
     socklen_t clilen;
     struct sockaddr_in serv_addr, cli_addr;
     
     // Create the socket as non-blocking. Without this, it's impossible for the server to close (since it blocks)
     // Será que precisa? Como que o server é fechado?
-    //if ((sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    //if ((accept_sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    if ((accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
         printf("ERROR opening socket");
-        cout << "\nsocket aberto\n";
+    cout << "\nsocket aberto\n";
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     bzero(&(serv_addr.sin_zero), 8);
 
-    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+    if (bind(accept_sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
         printf("ERROR on binding");
-        cout << "\nbinding completo\n";
+    cout << "\nbinding completo\n";
 
 
-    listen(sockfd, 5);
+    listen(accept_sockfd, 5);
     clilen = sizeof(struct sockaddr_in);
     while(true)
     {
         int newsockfd = -1;
-        cout << "\nWaiting for connection . . .\n";
+        cout << "\nWaiting for connection . . .";
         
-        //while(newsockfd<0 && !closing_server)
-            newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+        // Accept connections
+        while(newsockfd<0 && !closing_server){
+            // Check if any threads finished
+            check_finished_threads();
+            newsockfd = accept(accept_sockfd, (struct sockaddr *) &cli_addr, &clilen);
+        }
         if(closing_server)
             close_server();
 
-        cout << "CLIENTE DE IP " << cli_addr.sin_port << " CONECTADO!";
+        cout << "\nNew connection request";
         
         // Receive username from client
         struct packet *pkt = receive_payload(newsockfd);
@@ -73,17 +76,17 @@ void *Synchronization_server::accept_connections()
             
 	    // Create the new connected client
 	    Connected_client new_client(new_client_username, newsockfd, num_connections, port, header_size, max_payload);
-	    cout << "\n&buffer de " << new_client_username << ": ";
-        //printf("%p\n", &new_client.com.buffer);
+	    //cout << "\n&thread_finished de " << new_client_username << ": ";
+        //printf("%p\n", new_client.get_thread_finished());
         
         if(num_connections < 0){ // Too many connections
-            cout << "\nClient " << new_client_username << " failed to connect. Too many connections." << endl;
+            cout << "\nClient " << new_client_username << " failed to connect. Too many connections.";
             // Tell the client to close
             new_client.com.send_int(newsockfd, -1);
         }
 		else
 		{
-		    cout << "\nClient " << new_client_username << " connected" << endl;
+		    cout << "\nClient " << new_client_username << " connected";
 		    
 		    // Tell the client that the connection has been accepted
 		    new_client.com.send_int(newsockfd, 1);
@@ -91,12 +94,22 @@ void *Synchronization_server::accept_connections()
 		    // Create client folder, if it doesn't already exist
 		    string homedir = getenv("HOME");
 		    new_client.com.create_folder(homedir+"/server_sync_dir_"+new_client_username);
+		    
+		    // add new_client to the connected_clients vector
+		    connected_clients.push_back(new_client);
+		    
+		    // Add an entry to the client_threads_finished vector
+		    client_threads_finished.push_back(0);
 
             // Create a struct with the arguments to be sent to the new thread
             struct th_args args;
             args.obj = &new_client.com;
             args.newsockfd = new_client.get_sockfd();
             args.username = new_client.get_username();
+            //bool *pointer = client_threads_finished.data();
+            args.thread_finished = &client_threads_finished.data()[client_threads_finished.size() - 1];
+	    cout << "\n&thread_finished de " << new_client_username << ": " << &client_threads_finished.data()[client_threads_finished.size() - 1];
+	    cout << "\nvalor: " << client_threads_finished.data()[client_threads_finished.size() - 1];
             // TODO: Mandar vector pra thread pra que ela possa se retirar quando terminar. Não esquecer de decrementar as conexões ativas
             //args.connected_clients = &connected_clients;
 
@@ -106,9 +119,9 @@ void *Synchronization_server::accept_connections()
 		    pthread_t client_thread;
             pthread_create(&client_thread, NULL, new_client.com.receive_commands_helper, &args);
             
-            // Set the new connected client thread and add it to the connected_clients vector
-            new_client.set_thread(client_thread);
-		    connected_clients.push_back(new_client);
+            // Set the new connected client thread
+            connected_clients.back().set_thread(client_thread);
+		    //connected_clients.push_back(new_client);
         }
     }
 }
@@ -119,6 +132,9 @@ void Synchronization_server::close_server()
     cout << "\ntamanho do connected_clients: " << connected_clients.size();
     // Close all client sockets and join all client threads
     for(int i=0; i<connected_clients.size(); i++){
+        
+        cout << "\nthread_finished: " << client_threads_finished[i];
+        cout << "\nclient[" << i << "]:  " << *connected_clients[i].get_username() << "\nis_finished: " << client_threads_finished[i];
         cout << "\n\ni: " << i;
         cout << "\njoining thread " << connected_clients[i].get_thread();
         pthread_join(connected_clients[i].get_thread(), NULL);
@@ -126,8 +142,37 @@ void Synchronization_server::close_server()
         close(*connected_clients[i].get_sockfd());
         cout << "\nDONE!";
     }
-    cout << "\n\nEND!\n\n";
+    cout << "\nclosing accept socket";
+    close(accept_sockfd);
+    cout << "\nDONE!";
+    cout << "\nserver closed\n";
     exit(0);
+}
+
+void Synchronization_server::check_finished_threads()
+{
+    for(int i=0; i<connected_clients.size(); i++){
+        //cout << "\nclient[" << i << "]:  " << *connected_clients[i].get_username() << "\nis_finished: " << connected_clients[i].is_finished();
+        if(client_threads_finished[i]){
+            
+           /* for(int i=0; i<connected_clients.size(); i++){
+                vector <bool>::iterator it = client_threads_finished.begin()+i;
+	            cout << "\ncheck_finished_threads\n&thread_finished de " << *connected_clients[i].get_username() << ": " << &it;
+                }*/
+            cout << "\ni: " << i;
+            cout << "\nclient " << *connected_clients[i].get_username() << " disconnected\n";
+            cout << "\njoining thread " << connected_clients[i].get_thread() << "......";
+            pthread_join(connected_clients[i].get_thread(), NULL);
+            cout << "DONE!";
+            cout << "\nclosing socket " << *connected_clients[i].get_sockfd() << "......";
+            close(*connected_clients[i].get_sockfd());
+            cout << "DONE!";
+            cout << "\nvector size before: " << connected_clients.size();
+            connected_clients.erase(connected_clients.begin()+i);
+            cout << "\nvector size after: " << connected_clients.size();
+            cout << "\n";
+        }
+    }
 }
 
 packet* Synchronization_server::receive_header(int sockfd)

@@ -170,14 +170,14 @@ int main(int argc, char *argv[])
         printf("ERROR connecting\n");
 	
     char* file_buffer = (char*)malloc(payload_size);
-    const char* payload = (char*)"bla";
+    const char* payload = (char*)"bla2";
     
     // Create the packet that will be sent
     struct packet pkt;
     pkt.type = 2;
     pkt.seqn = 1;
     pkt.total_size = 1;
-    pkt.length = 5;
+    pkt.length = 4;
 	pkt._payload = payload;
     std::cout << "\n\npayload: " << pkt._payload << std::endl;
     
@@ -384,9 +384,9 @@ int main(int argc, char *argv[])
     
     
     
-    cout << "\nsleeping";
+    /*cout << "\nsleeping";
     sleep(5);
-    cout << "\nwoke up\n";
+    cout << "\nwoke up\n";*/
     
     
     // TESTING EXIT

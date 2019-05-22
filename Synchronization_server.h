@@ -27,6 +27,7 @@ class Synchronization_server
 	protected:
 
 	private:
+		int accept_sockfd;
 		int port;
 		int header_size;
 		int max_payload;
@@ -38,9 +39,12 @@ class Synchronization_server
 		struct file{time_t mtime; string name;};
 		vector<file> watched_files;
 		vector<Connected_client> connected_clients;
+		vector<int> client_threads_finished;
 		
 		void *accept_connections();
 		void close_server();
+		
+		void check_finished_threads();
 		
 		packet* receive_payload(int sockfd);// Receives the _payload of the packet from the client and returns a packet struct containing the _payload
 		packet* receive_header(int sockfd);	// Receives the header of the packet from the client and returns a packet struct containing the header
@@ -50,6 +54,7 @@ class Synchronization_server
 			void* obj = NULL;
 			int* newsockfd = NULL;
 			string* username = NULL;
+			int* thread_finished = NULL;
 		};
 };
 

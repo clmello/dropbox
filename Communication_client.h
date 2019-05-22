@@ -29,8 +29,8 @@ private:
 	int packet_size;
 	int sockfd;
 	char* buffer;
-	packet* header;
-	size_t header_address;
+	//packet* header;
+	//size_t header_address;
 	size_t buffer_address;
 
 public:
@@ -41,8 +41,8 @@ public:
 	void send_filename(std::string filename);
 	void send_file(std::string filename, std::string path);
 	void send_mtime(time_t mtime);
- 	packet* receive_header();
-	packet* receive_payload();
+ 	void receive_header(struct packet *_header);
+	void receive_payload(struct packet *pkt);
 	void receive_file(std::string path);
 	int receive_int();
 	long get_file_size(FILE *fp);

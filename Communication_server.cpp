@@ -89,7 +89,6 @@ int Communication_server::receive_payload(int sockfd, struct packet *pkt, bool i
 
 void *Communication_server::receive_commands(int sockfd, string username, int *thread_finished)//, vector<Connected_client> *connected_clients)
 {
-    printf("\n\nMY &THREAD_FINISHED IS: %p\nMY SOCKFD IS: %i", thread_finished, sockfd);
     bool close_thread = false;
     while(!close_thread) // TODO: ENQUANTO USUARIO NÃO FECHA
     {
@@ -144,6 +143,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 receive_payload(sockfd, &pkt, false);
                 string filename = pkt._payload;
                 path = path + "/server_sync_dir_" + username + "/" + filename;
+                cout << "\npath: " << path;
                 
                 //Send mtime
                 time_t mtime = get_mtime(filename);
@@ -163,7 +163,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 receive_payload(sockfd, &pkt, false);
                 string filename = pkt._payload;
                 path = path + "/server_sync_dir_" + username + "/" + filename;
-                //cout << "String path: " << path;
+                cout << "String path: " << path;
                 delete_file(path);
                 remove_watched_file(filename);
                 
@@ -397,7 +397,7 @@ void Communication_server::send_int(int sockfd, int number)
 
 void Communication_server::send_file(int sockfd, string path)
 {
-    char* buffer = (char*)malloc(packet_size);
+    char* buffer;// = (char*)malloc(packet_size);
     //------------------------------------------------------------------------
     // SEND FILE
     //------------------------------------------------------------------------
@@ -407,7 +407,9 @@ void Communication_server::send_file(int sockfd, string path)
     
     // Get the size of the file
     fseek(fp, 0 , SEEK_END);
-    long total_payload_size = get_file_size(fp);
+    long total_payload_size = ftell(fp);
+    // Go back to the beggining
+    fseek(fp, 0 , SEEK_SET);
     
     // The type of the packet being sent is 0 (data)
     uint16_t type = 0;
@@ -418,7 +420,7 @@ void Communication_server::send_file(int sockfd, string path)
     int total_size = total_size_f;
     if (total_size_f > total_size)
         total_size ++;
-    //cout << "\n\ntotal size: " << total_size;
+    cout << "\n\ntotal size: " << total_size;
     
     int i;
     int total_bytes_sent = 0;
@@ -447,7 +449,13 @@ void Communication_server::send_file(int sockfd, string path)
         //cout << endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
         
         // Read pkt.length bytes from the file
-        fread(file_buffer, 1, pkt.length, fp);
+        size_t bytes_read = fread(file_buffer, 1, pkt.length, fp);
+        if(bytes_read != pkt.length)
+            cout << "\nError reading from file \"" << path << "\"";
+        
+        cout << "\nbytes read: " << bytes_read;
+        cout << "\nConteudo lido: ";
+	    printf("%.*s\n", max_payload, file_buffer);
         // Save it to pkt._payload
         pkt._payload = file_buffer;
         
@@ -487,13 +495,13 @@ void Communication_server::send_file(int sockfd, string path)
 	        bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
-        //cout << "PACKET!\n";
-        //cout << "\npayload(char*): ";
-        //printf("%.*s\n", max_payload, pkt._payload);
-        //cout << "bytes sent: " << bytes_sent << endl;
+        cout << "PACKET!\n";
+        cout << "\npayload(char*): ";
+        printf("%.*s\n", max_payload, pkt._payload);
+        cout << "bytes sent: " << bytes_sent << endl;
         //------------------------------------------------------------------------
     }
-    free(file_buffer);
+    //free(file_buffer);
     fclose(fp);
 }
 

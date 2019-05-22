@@ -19,8 +19,8 @@ Communication_client::Communication_client() {
 	this->packet_size = this->header_size + this->payload_size;
 	this->buffer = (char*)malloc(header_size);
     this->buffer_address = (size_t)buffer;
-    this->header = (packet*)malloc(header_size);
-	this->header_address = (size_t)header;
+    //this->header = (packet*)malloc(header_size);
+	//this->header_address = (size_t)header;
 }
 
 bool Communication_client::connect_client_server(Client client) {
@@ -322,10 +322,11 @@ void Communication_client::send_mtime(time_t mtime) {
     std::cout << "bytes sent: " << bytes_sent << std::endl;
 }
 
-packet* Communication_client::receive_payload() {
+void Communication_client::receive_payload(struct packet *pkt) {
     std::cout << "\nENTREI NO RECEIVE_PAYLOAD\n\n";
-    packet *pkt = receive_header();
+    receive_header(pkt);
     std::cout << "Saiu do header\n";
+    std::cout << "pkt->length: " << pkt->length;
     std::cout << "\nVai entrar no while do receive_payload";
     int bytes_received = 0;
     while(bytes_received < pkt->length)
@@ -344,13 +345,21 @@ packet* Communication_client::receive_payload() {
 
     std::cout << "\nSaiu do while do receive_payload";
 	pkt->_payload = (const char*)buffer;
-
-    return pkt;
+	
+	if(pkt->type != 1){ // If the packet is not a command
+	    std::cout << "\n" << sockfd << ": payload(char*): ";
+	    printf("%.*s\n", payload_size, pkt->_payload);
+    }
+    else{ // If the packet is a command
+	    //cout << "\n" << sockfd << ": payload(int): ";
+        int command;
+        memcpy(&command, pkt->_payload, pkt->length);
+        std::cout << command;
+    }
 }
 
-packet* Communication_client::receive_header() {
+void Communication_client::receive_header(struct packet *_header) {
     buffer = (char*)buffer_address;
-    header = (packet*)header_address;
     //bzero(buffer, header_size);
     std::cout << "\n\nENTREI NO RECEIVE_HEADER\n\n";
 	int bytes_received=0;
@@ -377,14 +386,14 @@ packet* Communication_client::receive_header() {
         //cout << "buffer[0]: " << buffer[0] << endl;
         //cout << "buffer[1]: " << buffer[1] << endl;
 	    // Bytes from buffer[4] to buffer[7] are the size of _payload
-	    memcpy(&header->type, &buffer[0], 2);
-	    memcpy(&header->seqn, &buffer[2], 2);
-	    memcpy(&header->total_size, &buffer[4], 4);
-	    memcpy(&header->length, &buffer[8], 2);
-	    //cout << "\ntype: " << header->type;
-	    //cout << "\nseqn: " << header->seqn;
-	    //cout << "\ntotal_size: " << header->total_size;
-	    //cout << "\npayload_size: " << header->length << endl;
+	    memcpy(&_header->type, &buffer[0], 2);
+	    memcpy(&_header->seqn, &buffer[2], 2);
+	    memcpy(&_header->total_size, &buffer[4], 4);
+	    memcpy(&_header->length, &buffer[8], 2);
+	    std::cout << "\ntype: " << _header->type;
+	    std::cout << "\nseqn: " << _header->seqn;
+	    std::cout << "\ntotal_size: " << _header->total_size;
+	    std::cout << "\npayload_size: " << _header->length << std::endl;
     }
     std::cout << "\nSaindo do receive_header\n";
 /*
@@ -401,13 +410,13 @@ packet* Communication_client::receive_header() {
 	std::cout << "\ntotal_size: " << header->total_size;
 	std::cout << "\npayload_size: " << header->length << std::endl;
 */
-	return header;
 }
 
 int Communication_client::receive_int() {
-    packet *pkt = receive_payload();
+    packet pkt;
+    receive_payload(&pkt);
     int integer;
-    memcpy(&integer, pkt->_payload, pkt->length);
+    memcpy(&integer, pkt._payload, pkt.length);
     return integer;
 }
 
@@ -417,16 +426,17 @@ void Communication_client::receive_file(std::string path) {
         std::cout << "\nERROR OPENING " << path << std::endl; 
 
     
-    struct packet* pkt = receive_payload();
+    struct packet pkt;
+    receive_payload(&pkt);
     std::cout << "\nSai do primeiro receive_payload";
-    uint32_t total_size = pkt->total_size;
-    std::cout << "pkt total size: " << pkt->total_size;
-    std::cout << "\n\nTHE SERVER WILL RECEIVE " << total_size << " PACKETS!\n";
+    uint32_t total_size = pkt.total_size;
+    std::cout << "pkt total size: " << pkt.total_size;
+    std::cout << "\n\nTHE CLIENT WILL RECEIVE " << total_size << " PACKETS!\n";
     
     // Write the first payload to the file
-    ssize_t bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
+    ssize_t bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
     std::cout << "\nComecei a escrever no file pqp";
-    if (bytes_written_to_file < pkt->length)
+    if (bytes_written_to_file < pkt.length)
         std::cout << "\nERROR WRITING TO " << path << std::endl;
     
     //std::cout << bytes_written_to_file << " bytes written to file" << std::endl;
@@ -436,14 +446,15 @@ void Communication_client::receive_file(std::string path) {
     int i;
     for(i=2; i<=total_size; i++)
     {
+        std::cout << "\ni: " << i << "/" << total_size;
         // Receive payload
         std::cout << "\nFor da receive_file";
-        pkt = receive_payload();
+        receive_payload(&pkt);
         // Write it to the file
-        bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
-        if (bytes_written_to_file < pkt->length)
+        bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
+        if (bytes_written_to_file < pkt.length)
             std::cout << "\nERROR WRITING TO " << path << std::endl;
-        //std::cout << "\n" << bytes_written_to_file << " bytes written to file\n";
+        std::cout << "\n" << bytes_written_to_file << " bytes written to file\n";
     }
     std::cout << "\nTerminou de receber\n";
     fclose(fp);
@@ -512,7 +523,9 @@ Client::file Communication_client::download_command(int command, std::string fil
 
 	// receive mtime
     std::cout << "\nRecebendo o mtime";
-	time_t mtime = *(time_t*)receive_payload()->_payload;
+    struct packet pkt;
+    receive_payload(&pkt);
+	time_t mtime = *(time_t*)pkt._payload;
     std::cout << "\nmtime: " << mtime << std::endl;
     std::cout << "\nmtime recebido: " << mtime;
 
@@ -541,9 +554,9 @@ void Communication_client::delete_command(int command, std::string filename, std
 
     send_filename(filename);
 
-    path = path + '/' + filename;
-    std::cout << "\ndelete path: " << path;
-    delete_file(path);
+    //path = path + '/' + filename;
+    //std::cout << "\ndelete path: " << path;
+    //delete_file(path);
 }
 
 void Communication_client::list_server_command(int command) {
@@ -555,7 +568,9 @@ void Communication_client::list_server_command(int command) {
         exit(0);
     }
 
-    std::cout << "\n\nlist_server: " << receive_payload()->_payload << std::endl << std::endl;
+    struct packet pkt;
+    receive_payload(&pkt);
+    std::cout << "\n\nlist_server: " << pkt._payload << std::endl << std::endl;
 }
 
 void Communication_client::exit_command(int command) {

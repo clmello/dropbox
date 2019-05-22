@@ -69,7 +69,7 @@ void *Synchronization_server::accept_connections()
 		// num_connections will be -1 if number of connections > max_connections
 		int num_connections=1;
         for(int i=0; i<connected_clients.size(); i++){
-            cout << "\nverificando username \"" << new_client_username << "\" contra \"" << *connected_clients[i].get_username() << "\"";
+            //cout << "\nverificando username \"" << new_client_username << "\" contra \"" << *connected_clients[i].get_username() << "\"";
             if(new_client_username == *connected_clients[i].get_username())
                 num_connections = connected_clients[i].new_connection();
         }
@@ -107,8 +107,6 @@ void *Synchronization_server::accept_connections()
             args.newsockfd = new_client.get_sockfd();
             args.username = new_client.get_username();
             args.thread_finished = address;
-	    cout << "\n&thread_finished de " << new_client_username << " (client_threads_finished[" << threads_finished_address.size() - 1 << "]): " << address;
-	    cout << "\nvalor: " << *address;
             // TODO: Mandar vector pra thread pra que ela possa se retirar quando terminar. Não esquecer de decrementar as conexões ativas
             //args.connected_clients = &connected_clients;
 
@@ -128,11 +126,11 @@ void Synchronization_server::close_server()
 {
     // Close all client sockets and join all client threads
     for(int i=0; i<connected_clients.size(); i++){
-        cout << "\njoining thread " << connected_clients[i].get_thread();
+        cout << endl << "joining thread " << connected_clients[i].get_thread();
         pthread_join(connected_clients[i].get_thread(), NULL);
-        cout << "\nclosing socket " << *connected_clients[i].get_sockfd();
+        cout << endl << "closing socket " << *connected_clients[i].get_sockfd();
         close(*connected_clients[i].get_sockfd());
-        cout << "\nDONE!";
+        cout << endl << "DONE!";
     }
     cout << "\nclosing accept socket";
     close(accept_sockfd);
@@ -146,13 +144,13 @@ void Synchronization_server::check_finished_threads()
     for(int i=0; i<connected_clients.size(); i++){
         int *n = (int*)threads_finished_address[i];
         if(*n){
-            cout << "\nclient " << *connected_clients[i].get_username() << " disconnected\n";
-            cout << "\njoining thread " << connected_clients[i].get_thread() << "......";
+            cout << endl << "client " << *connected_clients[i].get_username() << " disconnected\n";
+            cout << endl << "joining thread " << connected_clients[i].get_thread() << "......";
             pthread_join(connected_clients[i].get_thread(), NULL);
             cout << "DONE!";
-            cout << "\nclosing socket " << *connected_clients[i].get_sockfd() << "......";
+            cout << endl << "closing socket " << *connected_clients[i].get_sockfd() << "......";
             close(*connected_clients[i].get_sockfd());
-            cout << "DONE!";
+            cout << "DONE!" << endl;
             connected_clients.erase(connected_clients.begin()+i);
             free(threads_finished_address[i]);
             threads_finished_address.erase(threads_finished_address.begin()+i);

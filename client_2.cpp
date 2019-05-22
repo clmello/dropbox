@@ -42,23 +42,6 @@ void print_bytes(const void *object, size_t size)
   printf("]\n");
 }
 
-
-
-
-
-FILE* read_file(string path)
-{
-    char ch, file_name[25];
-    FILE *fp;
-    
-    fp = fopen(path.c_str(), "r"); // read mode
-    
-    if(fp == NULL)
-        cout << "Error opening file " << path << endl;
-    
-    return fp;
-}
-
 packet* receive_header(int sockfd)
 {
 	int bytes_received=0;
@@ -130,6 +113,43 @@ int receive_int(int sockfd)
 }
 
 
+void receive_file(int sockfd, string path)
+{
+    FILE *fp = fopen(path.c_str(), "w");
+    if(fp==NULL)
+        cout << "\nERROR OPENING " << path << endl; 
+
+    // Get the number of packets to be received
+    // To do that, we must receive the first packet
+    struct packet *pkt = receive_payload(sockfd);
+    uint32_t total_size = pkt->total_size;
+    cout << "\n\nTHE CLIENT WILL RECEIVE " << total_size << " PACKETS!\n";
+    // Write the first payload to the file
+    ssize_t bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
+    if (bytes_written_to_file < pkt->length)
+        cout << "\nERROR WRITING TO " << path << endl;
+    
+    //cout << bytes_written_to_file << " bytes written to file" << endl;
+    
+    // Receive all the [total_size] packets
+    // It starts at 2 because the first packet has already been received
+    int i;
+    for(i=2; i<=total_size; i++)
+    {
+        // Receive payload
+        receive_payload(sockfd);
+        // Write it to the file
+        bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
+        if (bytes_written_to_file < pkt->length)
+            cout << "\nERROR WRITING TO " << path << endl;
+        //cout << "\n" << bytes_written_to_file << " bytes written to file\n";
+    }
+    cout << "\nEU QUERO";
+    fclose(fp);
+    cout << " DORMIR\n";
+}
+
+
 
 
 
@@ -170,14 +190,14 @@ int main(int argc, char *argv[])
         printf("ERROR connecting\n");
 	
     char* file_buffer = (char*)malloc(payload_size);
-    const char* payload = (char*)"bla2";
+    const char* payload = (char*)"bla";
     
     // Create the packet that will be sent
     struct packet pkt;
     pkt.type = 2;
     pkt.seqn = 1;
     pkt.total_size = 1;
-    pkt.length = 4;
+    pkt.length = 3;
 	pkt._payload = payload;
     std::cout << "\n\npayload: " << pkt._payload << std::endl;
     
@@ -236,7 +256,10 @@ int main(int argc, char *argv[])
     
     
     
-    // TESTING LIST_SERVER
+    
+    
+    // TESTING DOWNLOAD
+    cout << "\nsending command 2\n";
     
     //------------------------------------------------------------------------
     // SEND COMMAND
@@ -248,7 +271,7 @@ int main(int argc, char *argv[])
     pkt.seqn = 1;
     pkt.total_size = 1;
     pkt.length = sizeof(int);
-    int command = 4;
+    int command = 2;
 	pkt._payload = (const char*)&command;
 	// send header
 	/* write in the socket */
@@ -281,66 +304,7 @@ int main(int argc, char *argv[])
         exit(0);
     }
     
-    //------------------------------------------------------------------------
-    // RECEIVE STRING
-    //------------------------------------------------------------------------
-    // This was created to test receiving a string
-    packet *pkt_ = receive_payload(sockfd);
-    string ls = pkt_->_payload;
-    ls = ls.substr(0, pkt_->length);
-    cout << "\n\nlist_server: " <<  ls << endl << endl;
-    //------------------------------------------------------------------------
-    
-    
-    
-    
-    
-    
-    
-    // TESTING DELETE FILE
-    
-    //------------------------------------------------------------------------
-    // SEND COMMAND
-    //------------------------------------------------------------------------
-    // This send was created to test sending an integer.
-    
-    pkt.type = 1;
-    pkt.seqn = 1;
-    pkt.total_size = 1;
-    pkt.length = sizeof(int);
-    command = 3;
-	pkt._payload = (const char*)&command;
-	// send header
-	/* write in the socket */
-	buffer = (char*)&pkt;
-	bytes_sent = 0;
-	while (bytes_sent < header_size)
-	{
-	    n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
-        if (n < 0) 
-		    printf("ERROR writing to socket\n");
-		bytes_sent += n;
-    }
-    cout << "bytes sent: " << bytes_sent << endl;
-    //send payload
-	/* write in the socket */
-	bytes_sent = 0;
-	while (bytes_sent < pkt.length)
-	{
-	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
-        if (n < 0) 
-		    printf("ERROR writing to socket\n");
-		bytes_sent += n;
-    }
-    cout << "bytes sent: " << bytes_sent << endl;
-    //------------------------------------------------------------------------
-    
-    // Receive return int
-    if(receive_int(sockfd) < 0){
-        cout << "\nServer closed\n";
-        exit(0);
-    }
-    
+    cout << "\nsending filename\n";
     //------------------------------------------------------------------------
     // SEND FILENAME
     //------------------------------------------------------------------------
@@ -381,6 +345,29 @@ int main(int argc, char *argv[])
     }
     cout << "bytes sent: " << bytes_sent << endl;
     //------------------------------------------------------------------------
+    
+    cout << "\nreceiving mtime\n";
+    //------------------------------------------------------------------------
+    // RECEIVE MTIME
+    //------------------------------------------------------------------------
+    // This was created to test receiving mtime
+    receive_payload(sockfd);
+    time_t mtime = *(time_t*)pkt._payload;
+    //------------------------------------------------------------------------
+    
+    cout << "\nreceiving file\n";
+    //------------------------------------------------------------------------
+    // RECEIVE FILE
+    //------------------------------------------------------------------------
+    // This was created to test receiving a file
+    receive_file(sockfd, "/home/alack/sync_dir_bla/teste.txt");
+    //------------------------------------------------------------------------
+    
+    cout << "\nFILE RECEIVED\n";
+    
+    
+    
+    
     
     
     

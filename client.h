@@ -48,6 +48,7 @@ public:
     static void *check_files_helper(void* void_args);
     std::string createSyncDir();
     //void syncClient();
+    void remove_from_watched_files(std::string filename);
     void userInterface();
 };
 

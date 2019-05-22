@@ -231,6 +231,17 @@ std::string Client::createSyncDir() {
 	return dir;
 }
 
+void Client::remove_from_watched_files(std::string filename) {
+    for(int i=0; i < watched_files.size(); i++)
+    {
+        if(filename == watched_files[i].name)
+            //std::cout << "\n\nwatched_file: "<< watched_files[i].name << "\tfilename: " << filename;
+            watched_files.erase(watched_files.begin()+i);
+
+        
+    }
+}
+
 
 void Client::userInterface() {
     bool running = true;
@@ -275,6 +286,10 @@ void Client::userInterface() {
         }
         else if(command == "delete") {
             std::cout << "Delete " << input << "\n";
+            communication.delete_command(3, input, this->dir);
+            // removeu da pasta, agora remove dos watched files
+            remove_from_watched_files(input);
+
 /*
             if (argument == "")
                 std::cout << "Delete needs argument <file>";
@@ -292,7 +307,6 @@ void Client::userInterface() {
                 }
             }
 */
-            //communication.send_command(3);
         }
         else if(command == "list_server") {
             std::cout << "List Server \n";

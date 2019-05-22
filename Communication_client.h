@@ -46,9 +46,11 @@ public:
 	void receive_file(std::string path);
 	int receive_int();
 	long get_file_size(FILE *fp);
+	int delete_file(std::string path);
 
 	void upload_command(int command, std::string filename, std::string path, time_t mtime);
 	Client::file download_command(int command, std::string filename, std::string path, Client::file download_file);
+	void delete_command(int command, std::string filename, std::string path);
 	void list_server_command(int command);
 	void exit_command(int command);
 };

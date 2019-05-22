@@ -449,8 +449,7 @@ void Communication_client::receive_file(std::string path) {
     fclose(fp);
 }
 
-long Communication_client::get_file_size(FILE *fp)
-{
+long Communication_client::get_file_size(FILE *fp) {
     // Get file size
     fseek(fp, 0 , SEEK_END);
     long size = ftell(fp);
@@ -460,6 +459,16 @@ long Communication_client::get_file_size(FILE *fp)
     fclose(fp);
     return size;
 }
+
+int Communication_client::delete_file(std::string path) {
+    int error = 0;
+    std::cout << "path: " << path;
+    error = remove(path.c_str());
+    if(error != 0)
+        std::cout << "\nError deleting file";
+    return error;
+}
+
 
 void Communication_client::upload_command(int command, std::string filename, std::string path, time_t mtime) {
 
@@ -518,6 +527,23 @@ Client::file Communication_client::download_command(int command, std::string fil
 
 	return download_file;
 	
+}
+
+void Communication_client::delete_command(int command, std::string filename, std::string path) {
+    send_command(command);
+
+    // resposta do server
+    // Receive return int
+    if(receive_int() < 0){
+        std::cout << "\nServer closed\n";
+        exit(0);
+    }
+
+    send_filename(filename);
+
+    path = path + '/' + filename;
+    std::cout << "\ndelete path: " << path;
+    delete_file(path);
 }
 
 void Communication_client::list_server_command(int command) {

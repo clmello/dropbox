@@ -264,18 +264,15 @@ void Client::userInterface() {
 
         if(command == "upload") {
             std::cout << "Upload " << input << "\n";
-            
             std::string filename = input.substr(input.find_last_of("\\/")+1, input.length());
-            input = input.substr(0, input.find_last_of("\\/"));
             std::cout << "\n!!!filename: " << filename << std::endl;
-            std::cout << "!!!path: " << input << std::endl;
-            
-            std::cout << "\nVou entrar na mtime!";
+            std::cout << "!!!path: " << this->dir << std::endl;
+
+            //std::cout << "\nVou entrar na mtime!";
             time_t mtime = get_mtime(input);
-            std::cout << "\nmtime: " << mtime << "\n";
+            //std::cout << "\nmtime: " << mtime << "\n";
             
-            communication.upload_command(1, filename, input, mtime);
-            std::cout << "\nEnviou!\n";
+            communication.upload_command(1, filename, this->dir, mtime);
             // metodo pra upload
         }
         else if(command == "download") {
@@ -283,12 +280,11 @@ void Client::userInterface() {
             std::string path = getenv("HOME");
 			path = path + '/' + input;
             std::cout << "\npath: " << path;
-            std::cout << "\nfuck you download";
             file auxfile;
             file downloadFile = communication.download_command(2, input, path, auxfile);
             std::cout << "\nJá passei pela download_command e recebi de volta:";
             std::cout << "\ndownloadFile.name: " << downloadFile.name;
-            std::cout << "\ndownloadFule.mtime" << downloadFile.mtime;
+            std::cout << "\ndownloadFile.mtime" << downloadFile.mtime;
             // metodo pra download
         }
         else if(command == "delete") {

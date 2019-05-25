@@ -210,6 +210,23 @@ void *Client::check_files_helper(void* context) {
     return ((Client *)context)->check_files_loop();
 }
 
+bool Client::file_exists(std::string filename) {
+    DIR *fileDir; 
+    struct dirent *lsdir;
+    fileDir= opendir(dir.c_str());
+
+    while ((lsdir = readdir(fileDir)) != NULL)
+    {
+        if(lsdir->d_name[0] != '.') { // Ignora . e ..
+            if(lsdir->d_name == filename) {
+                printf("%s\n", lsdir->d_name);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 // Pretendo mudar pra outra classe tipo um Folder ou Util
 std::string Client::createSyncDir() {
     // filesystem path
@@ -268,12 +285,16 @@ void Client::userInterface() {
             std::cout << "\n!!!filename: " << filename << std::endl;
             std::cout << "!!!path: " << this->dir << std::endl;
 
-            //std::cout << "\nVou entrar na mtime!";
-            time_t mtime = get_mtime(input);
-            //std::cout << "\nmtime: " << mtime << "\n";
-            
-            communication.upload_command(1, filename, this->dir, mtime);
-            // metodo pra upload
+            bool fileExists = file_exists(filename);
+            if(fileExists) {
+                //std::cout << "\nVou entrar na mtime!";
+                time_t mtime = get_mtime(input);
+                //std::cout << "\nmtime: " << mtime << "\n";
+                communication.upload_command(1, filename, this->dir, mtime);
+                // metodo pra upload
+            } else {
+                std::cout << "\nNão foi possível enviar o arquivo porque ele não existe.\n";
+            }
         }
         else if(command == "download") {
             std::cout << "\nDownload " << input << "\n";
@@ -289,9 +310,15 @@ void Client::userInterface() {
         }
         else if(command == "delete") {
             std::cout << "\nDelete " << input << "\n";
-            communication.delete_command(3, input, this->dir);
-            // removeu da pasta, agora remove dos watched files
-            remove_from_watched_files(input);
+            bool fileExists = file_exists(input);
+            if(fileExists) {
+                communication.delete_command(3, input, this->dir);
+                // removeu da pasta, agora remove dos watched files
+                remove_from_watched_files(input);
+            } else {
+                std::cout << "\nNão foi possível deletar o arquivo porque ele não existe.\n";
+            }
+
 
 /*
             if (argument == "")
@@ -321,7 +348,7 @@ void Client::userInterface() {
         else if(command == "list_client") {
             // vai ter que se comunicar com o server pra receber o int de voltar, mas só pra isso
             std::cout << "List Client \n";
-             DIR *fileDir; 
+            DIR *fileDir; 
             struct dirent *lsdir;
 
             fileDir= opendir(dir.c_str());

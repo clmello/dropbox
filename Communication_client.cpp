@@ -182,7 +182,7 @@ void Communication_client::send_filename(std::string filename) {
 void Communication_client::send_file(std::string filename, std::string path){
 	char* file_buffer = (char*)malloc(payload_size);
 	std::string complete_path = path + "/" + filename;
-	std::cout << "PATH COMPLETO SEND_FILE:" << complete_path;
+	//std::cout << "PATH COMPLETO SEND_FILE:" << complete_path;
 	FILE *fp = fopen(complete_path.c_str(), "r");
     
 	if(fp == NULL)
@@ -207,8 +207,8 @@ void Communication_client::send_file(std::string filename, std::string path){
     
     int i;
     int total_bytes_sent = 0;
-    std::cout << "\n\nenviando: " << std::endl;
-	printf("%.*s\n", payload_size, buffer);
+    //std::cout << "\n\nenviando: " << std::endl;
+	//printf("%.*s\n", payload_size, buffer);
     
     // Send each packet
     // If only one packet will be sent, the program will go through the loop only once
@@ -281,7 +281,7 @@ void Communication_client::send_file(std::string filename, std::string path){
 }
 
 void Communication_client::send_mtime(time_t mtime) {
-    std::cout << "\nENTROU NA SEND_MTIME";
+    //std::cout << "\nENTROU NA SEND_MTIME";
     const char* payload = (char*)&mtime;
     int n;
 
@@ -323,11 +323,11 @@ void Communication_client::send_mtime(time_t mtime) {
 }
 
 void Communication_client::receive_payload(struct packet *pkt) {
-    std::cout << "\nENTREI NO RECEIVE_PAYLOAD\n\n";
+    //std::cout << "\nENTREI NO RECEIVE_PAYLOAD\n\n";
     receive_header(pkt);
-    std::cout << "Saiu do header\n";
-    std::cout << "pkt->length: " << pkt->length;
-    std::cout << "\nVai entrar no while do receive_payload";
+    //std::cout << "Saiu do header\n";
+    //std::cout << "pkt->length: " << pkt->length;
+    //std::cout << "\nVai entrar no while do receive_payload";
     int bytes_received = 0;
     while(bytes_received < pkt->length)
     {
@@ -337,18 +337,18 @@ void Communication_client::receive_payload(struct packet *pkt) {
             printf("ERROR reading from socket");
             
         bytes_received+=n;
-        std::cout << "\nEstou no while do receive_payload";
+        //std::cout << "\nEstou no while do receive_payload";
 		std::cout << "\nbytes lidos: " << bytes_received << std::endl;
         std::cout << "\npkt lenght: " << pkt->length;
 	}
     //std::cout << "\nbytes lidos: " << bytes_received;
 
-    std::cout << "\nSaiu do while do receive_payload";
+    //std::cout << "\nSaiu do while do receive_payload";
 	pkt->_payload = (const char*)buffer;
 	
 	if(pkt->type != 1){ // If the packet is not a command
-	    std::cout << "\n" << sockfd << ": payload(char*): ";
-	    printf("%.*s\n", payload_size, pkt->_payload);
+	    //std::cout << "\n" << sockfd << ": payload(char*): ";
+	    //printf("%.*s\n", payload_size, pkt->_payload);
     }
     else{ // If the packet is a command
 	    //cout << "\n" << sockfd << ": payload(int): ";
@@ -361,16 +361,16 @@ void Communication_client::receive_payload(struct packet *pkt) {
 void Communication_client::receive_header(struct packet *_header) {
     buffer = (char*)buffer_address;
     //bzero(buffer, header_size);
-    std::cout << "\n\nENTREI NO RECEIVE_HEADER\n\n";
+    //std::cout << "\n\nENTREI NO RECEIVE_HEADER\n\n";
 	int bytes_received=0;
 	//cout << "\n\nbytes lidos: "<<bytes_received;
     while(bytes_received < header_size)
     {
-        std::cout << "\nheader size: " << header_size;
-        std::cout << "\nBYTES_LIDOS ANTES DO READ: " << bytes_received;
+        //std::cout << "\nheader size: " << header_size;
+        //std::cout << "\nBYTES_LIDOS ANTES DO READ: " << bytes_received;
         //int n = read(sockfd, buffer, header_size);
         int n = read(sockfd, buffer, header_size - bytes_received);
-        std::cout << "\nBYTES_LIDOS DEPOIS DO READ: " << bytes_received;
+        //std::cout << "\nBYTES_LIDOS DEPOIS DO READ: " << bytes_received;
         //cout << "\nN DEPOIS DO READ: " << n;
         if (n < 0) {
             printf("ERROR reading from socket");
@@ -428,14 +428,13 @@ void Communication_client::receive_file(std::string path) {
     
     struct packet pkt;
     receive_payload(&pkt);
-    std::cout << "\nSai do primeiro receive_payload";
     uint32_t total_size = pkt.total_size;
     std::cout << "pkt total size: " << pkt.total_size;
     std::cout << "\n\nTHE CLIENT WILL RECEIVE " << total_size << " PACKETS!\n";
     
     // Write the first payload to the file
     ssize_t bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
-    std::cout << "\nComecei a escrever no file pqp";
+    //std::cout << "\nComecei a escrever no file pqp";
     if (bytes_written_to_file < pkt.length)
         std::cout << "\nERROR WRITING TO " << path << std::endl;
     
@@ -448,7 +447,6 @@ void Communication_client::receive_file(std::string path) {
     {
         std::cout << "\ni: " << i << "/" << total_size;
         // Receive payload
-        std::cout << "\nFor da receive_file";
         receive_payload(&pkt);
         // Write it to the file
         bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
@@ -456,7 +454,6 @@ void Communication_client::receive_file(std::string path) {
             std::cout << "\nERROR WRITING TO " << path << std::endl;
         std::cout << "\n" << bytes_written_to_file << " bytes written to file\n";
     }
-    std::cout << "\nTerminou de receber\n";
     fclose(fp);
 }
 
@@ -504,9 +501,9 @@ void Communication_client::upload_command(int command, std::string filename, std
 }
 
 Client::file Communication_client::download_command(int command, std::string filename, std::string path, Client::file download_file) {
-	std::cout << "\nENTREI NA DOWNLOAD_COMMAND";
-    std::cout << "\nfilename recebido: " << filename;
-    std::cout << "\npath recebido: " << path;
+	//std::cout << "\nENTREI NA DOWNLOAD_COMMAND";
+    //std::cout << "\nfilename recebido: " << filename;
+    //std::cout << "\npath recebido: " << path;
     
     // send command download (2)
 	send_command(command);
@@ -522,7 +519,6 @@ Client::file Communication_client::download_command(int command, std::string fil
 	send_filename(filename);
 
 	// receive mtime
-    std::cout << "\nRecebendo o mtime";
     struct packet pkt;
     receive_payload(&pkt);
 	time_t mtime = *(time_t*)pkt._payload;
@@ -532,11 +528,8 @@ Client::file Communication_client::download_command(int command, std::string fil
 	download_file.name = filename;
 	download_file.mtime = mtime;
 
-    std::cout << "\nfuck this shit (entrando na receive file)" ;
 	// receive file
 	receive_file(path);
-
-    std::cout << "\nSOCORRO PASSEI POR TUDO AMEM ABENOADO SEJA\n";
 
 	return download_file;
 	

@@ -21,13 +21,15 @@ class Connected_client{
 		pthread_t get_thread();
 		//bool *get_thread_finished();
 		//bool is_finished();
-		
+
 		// This method MUST BE CALLED after the creation of an object
 		void set_thread(pthread_t thread);
 
 		// Returns num_connections+1 if num_connections+1 < max_connections, -1 otherwise
 		int new_connection();
-		
+
+		void remove_connection();
+
 		Communication_server com;
 
 	private:
@@ -35,7 +37,7 @@ class Connected_client{
 		int sockfd;
 		int num_connections;
 		int max_connections;
-		
+
 		pthread_t thread;
 		//bool thread_finished;
 

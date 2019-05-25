@@ -7,7 +7,7 @@ Connected_client::Connected_client(string username, int sockfd, int num_connecti
 	this->num_connections = num_connections;
 	this->max_connections = 2;
 	//this->thread_finished = false;
-	
+
 	com.Init(port, header_size, max_payload);
 }
 
@@ -36,3 +36,4 @@ int Connected_client::new_connection()
 	}
 }
 
+void Connected_client::remove_connection() {num_connections--;}

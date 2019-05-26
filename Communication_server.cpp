@@ -90,7 +90,7 @@ int Communication_server::receive_payload(int sockfd, struct packet *pkt, bool i
 void *Communication_server::receive_commands(int sockfd, string username, int *thread_finished, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)//, vector<Connected_client> *connected_clients)
 {
     bool close_thread = false;
-	bool file_not_found = false;
+	//bool file_not_found = false;
     while(!close_thread) // TODO: ENQUANTO USUARIO NÃO FECHA
     {
         // Wait for a command
@@ -103,14 +103,15 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 		//  1: everything OK. The command will be executed;
 		// -1: server is closing. The command will not be executed;
 		// -2: file not found. The command will not be executed;
+		//TODO: NÃO MAIS!!! ^ ISSO IA DAR PROBLEMA! NÃO TEM O FILE_NOT_FOUND!
         if(closing_server){
             send_int(sockfd, -1);
             command = 7;
         }
-		else if(file_not_found){
+		/*else if(file_not_found){
 			file_not_found = false;
             send_int(sockfd, -2);
-        }
+        }*/
         else{
             send_int(sockfd, 1);
         }
@@ -169,10 +170,14 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 				int return_value = start_reading_file(path, user_files, user_files_mutex);
 
 				// If the file doesn't exist, don't try to read it and tell the client that it doesn't exist
+				// Send 1 if OK, send -1 if file doesn't exist
 				if(return_value == -1){
-					file_not_found = true;
+					//file_not_found = true;
+					send_int(sockfd, -1);
 					break;
 				}
+				else
+					send_int(sockfd, 1);
 
                 //Send mtime
                 time_t mtime = get_mtime(filename, username, user_files, user_files_mutex);

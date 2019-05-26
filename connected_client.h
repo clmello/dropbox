@@ -13,14 +13,16 @@ using namespace std;
 class Connected_client{
 
 	public:
-		Connected_client(string username, int sockfd, int num_connections, int port, int header_size, int max_payload);
+		void init(string username, int sockfd, int num_connections, int port, int header_size, int max_payload);
+		// If this is the second client from the same user, the vector of files and its mutex must be the same
+		void init(string username, int sockfd, int num_connections, int port, int header_size, int max_payload, vector<File_server> *user_files_pointer, pthread_mutex_t *user_files_mutex_pointer);
 
 		string *get_username();
 		int *get_sockfd();
 		int get_num_connections();
 		pthread_t get_thread();
-		//bool *get_thread_finished();
-		//bool is_finished();
+		vector<File_server> *get_user_files();
+		pthread_mutex_t *get_user_files_mutex();
 
 		// This method MUST BE CALLED after the creation of an object
 		void set_thread(pthread_t thread);
@@ -39,7 +41,11 @@ class Connected_client{
 		int max_connections;
 
 		pthread_t thread;
-		//bool thread_finished;
+
+		vector<File_server> user_files;
+		vector<File_server> *user_files_pointer;
+		pthread_mutex_t user_files_mutex;
+		pthread_mutex_t *user_files_mutex_pointer;
 
 };
 

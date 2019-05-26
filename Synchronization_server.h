@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h> 
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -40,12 +40,12 @@ class Synchronization_server
 		vector<file> watched_files;
 		vector<Connected_client> connected_clients;
 		vector<int*> threads_finished_address;
-		
+
 		void *accept_connections();
 		void close_server();
-		
+
 		void check_finished_threads();
-		
+
 		packet* receive_payload(int sockfd);// Receives the _payload of the packet from the client and returns a packet struct containing the _payload
 		packet* receive_header(int sockfd);	// Receives the header of the packet from the client and returns a packet struct containing the header
 };

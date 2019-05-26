@@ -1,12 +1,25 @@
 #include "connected_client.h"
 
-Connected_client::Connected_client(string username, int sockfd, int num_connections, int port, int header_size, int max_payload)
+void Connected_client::init(string username, int sockfd, int num_connections, int port, int header_size, int max_payload)
 {
 	this->username = username;
 	this->sockfd = sockfd;
 	this->num_connections = num_connections;
 	this->max_connections = 2;
-	//this->thread_finished = false;
+	this->user_files_pointer = &user_files;
+	this->user_files_mutex_pointer = &user_files_mutex;
+
+	com.Init(port, header_size, max_payload);
+}
+
+void Connected_client::init(string username, int sockfd, int num_connections, int port, int header_size, int max_payload, vector<File_server> *user_files_pointer, pthread_mutex_t *user_files_mutex_pointer)
+{
+	this->username = username;
+	this->sockfd = sockfd;
+	this->num_connections = num_connections;
+	this->max_connections = 2;
+	this->user_files_pointer = user_files_pointer;
+	this->user_files_mutex_pointer = user_files_mutex_pointer;
 
 	com.Init(port, header_size, max_payload);
 }
@@ -19,11 +32,17 @@ int Connected_client::get_num_connections() {return num_connections;}
 
 pthread_t Connected_client::get_thread() {return thread;}
 
-//bool *Connected_client::get_thread_finished() {return &thread_finished;}
-
-//bool Connected_client::is_finished() {return thread_finished;}
-
 void Connected_client::set_thread(pthread_t thread) {this->thread = thread;}
+
+vector<File_server> *Connected_client::get_user_files()
+{
+	return user_files_pointer;
+}
+
+pthread_mutex_t *Connected_client::get_user_files_mutex()
+{
+	return user_files_mutex_pointer;
+}
 
 int Connected_client::new_connection()
 {

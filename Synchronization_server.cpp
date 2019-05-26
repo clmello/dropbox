@@ -66,16 +66,26 @@ void *Synchronization_server::accept_connections()
         string new_client_username = str_buff.substr(0, pkt->length);
 
 		// Check if the client is already connected. If it is, check if number of connections > max_connections
-		// num_connections will be -1 if number of connections > max_connections
+		// num_connections will be -1 if number of connections > max_connections. Also, if it is connected its file_server vector and its
+		//file_server mutex should be the same (reference)
+		vector<File_server> *files_vector = NULL;
+		pthread_mutex_t *files_mutex = NULL;
 		int num_connections=1;
         for(int i=0; i<connected_clients.size(); i++){
             //cout << "\nverificando username \"" << new_client_username << "\" contra \"" << *connected_clients[i].get_username() << "\"";
-            if(new_client_username == *connected_clients[i].get_username())
+            if(new_client_username == *connected_clients[i].get_username()){
                 num_connections = connected_clients[i].new_connection();
+				files_vector = connected_clients[i].get_user_files();
+				files_mutex = connected_clients[i].get_user_files_mutex();
+			}
         }
 
-	    // Create the new connected client
-	    Connected_client new_client(new_client_username, newsockfd, num_connections, port, header_size, max_payload);
+		// If this is the first client with this username or not, create the new connected client with the correct constructor
+		Connected_client new_client;
+		if(files_vector==NULL)
+	    	new_client.init(new_client_username, newsockfd, num_connections, port, header_size, max_payload);
+		else
+	    	new_client.init(new_client_username, newsockfd, num_connections, port, header_size, max_payload, files_vector, files_mutex);
 
         if(num_connections < 0){ // Too many connections
             cout << "\nClient " << new_client_username << " failed to connect. Too many connections.";
@@ -107,10 +117,18 @@ void *Synchronization_server::accept_connections()
             args.newsockfd = new_client.get_sockfd();
             args.username = new_client.get_username();
             args.thread_finished = address;
-            // TODO: Mandar vector pra thread pra que ela possa se retirar quando terminar. Não esquecer de decrementar as conexões ativas
-            //args.connected_clients = &connected_clients;
+			args.user_files = new_client.get_user_files();
+			args.user_files_mutex = new_client.get_user_files_mutex();
 
+// TODO: mutex pra acessar user_files;
 // TODO: mutex pra que dois clientes do mesmo user não possam fazer upload e download do mesmo arquivo ao mesmo tempo
+// Isso ^ vai ser feito mandando o endereço do mesmo vetor de file_server para todos os clients de mesmo username
+// Como o vetor fica no connected_client, o primeiro client conectado pode inicializar o seu vetor, e os outros recebem
+//o endereço dele (os outros com o mesmo username)
+// TEM UM CONSTRUTOR NO CONNECTED_CLIENT PRA ISSO ^
+// Não precisa mexer em nada do connected_client, ele já retorna tudo direitinho
+// O que precisa fazer é percorrer o vetor de connected clients procurando o novo username. Se já existe, manda o get_user_files() e o get_user_files_mutex() dele em args
+// FEITO! ^
 // TODO: arrumar memory leaks do communication_server
 // TODO: NÃO precisa de mutex para args.thread_finished (at most once)
             // Create the thread for this client

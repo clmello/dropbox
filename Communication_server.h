@@ -68,17 +68,17 @@ class Communication_server
 		int max_payload;
 		int packet_size;
 		// TODO: tirar tudo isso. Usar o vetor de server_files passado por args
-		struct file{time_t mtime; string name;};
-		vector<file> watched_files;
+		//struct file{time_t mtime; string name;};
+		//vector<file> watched_files;
 
 		void *accept_connections();
 		void *receive_commands(int sockfd, string username, int *thread_finished, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
 
 		//TODO: vai ter que tirar tudo isso
-		bool file_is_watched(string filename);
-		void update_watched_file(string filename, time_t mtime);
-		time_t get_mtime(string filename);
-		void remove_watched_file(string filename);
+		//bool file_is_watched(string filename);
+		//void update_watched_file(string filename, time_t mtime);
+		//time_t get_mtime(string filename);
+		//void remove_watched_file(string filename);
 
 		//pthread_mutex_t *get_file_mutex(vector<File_server> *user_files, string path, pthread_mutex_t *user_files_mutex);
 		void update_user_file(string path, time_t mtime, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
@@ -89,6 +89,7 @@ class Communication_server
 		void remove_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
 		bool file_exists(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
 		string get_files_and_mtime(vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
+		time_t get_mtime(string filename, string username, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
 
 };
 

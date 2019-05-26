@@ -175,7 +175,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 				}
 
                 //Send mtime
-                time_t mtime = get_mtime(filename);
+                time_t mtime = get_mtime(filename, username, user_files, user_files_mutex);
                 char* mtime_char = (char*)&mtime;
                 send_string(sockfd, mtime_char);
 
@@ -288,7 +288,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                         send_string(sockfd, lsdir->d_name);
 
                         // Get mtime
-                        time_t mtime = get_mtime(lsdir->d_name);
+                        time_t mtime = get_mtime(lsdir->d_name, username, user_files, user_files_mutex);
                         char* mtime_char = (char*)&mtime;
                         // Send mtime
                         send_string(sockfd, mtime_char);
@@ -654,7 +654,7 @@ long Communication_server::get_file_size(FILE *fp)
     fclose(fp);
     return size;
 }
-
+/*
 bool Communication_server::file_is_watched(string filename)
 {
     bool file_found = false;
@@ -705,7 +705,7 @@ void Communication_server::remove_watched_file(string filename)
         if(filename == watched_files[i].name)
             watched_files.erase(watched_files.begin()+i);
     }
-}
+}/*
 
 // ACHO QUE NÂO PRECISA DESSA FUNÇÃO!!!
 /*
@@ -946,4 +946,29 @@ string Communication_server::get_files_and_mtime(vector<File_server> *user_files
 	pthread_mutex_unlock(user_files_mutex);
 
 	return return_str;
+}
+
+time_t Communication_server::get_mtime(string filename, string username, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)
+{
+	string path = getenv("HOME");
+	path = path + "/server_sync_dir_" + username + "/" + filename;
+
+	// Since any thread of the same user could be editing the user_files vector,
+	//we need mutual exclusion
+	pthread_mutex_lock(user_files_mutex);
+
+	// Look for the file with this path
+	for(int i=0; i<user_files->size(); i++)
+	{
+		if((*user_files)[i].get_path() == path){
+			// Unlock the mutex for editing the user_files vector
+			pthread_mutex_unlock(user_files_mutex);
+			// return mtime
+			return (*user_files)[i].get_mtime();
+		}
+	}
+
+	// Unlock the mutex for editing the user_files vector
+	pthread_mutex_unlock(user_files_mutex);
+	return -1;
 }

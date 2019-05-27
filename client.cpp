@@ -203,11 +203,21 @@ void *Client::check_files_loop() {
         }
         //printWatchedFies();
         sleep(40);
-    }   
+    }
 }
 
 void *Client::check_files_helper(void* context) {
     return ((Client *)context)->check_files_loop();
+}
+
+void Client::copy_file(std::string original_path, std::string copy_path) {
+    std::cout << "\nOriginal Path: " << original_path;
+    std::cout << "\nCopy Path: " << copy_path;
+    
+    std::ifstream  src(original_path.c_str(), std::ios::binary);
+    std::ofstream  dst(copy_path.c_str(),   std::ios::binary);
+
+    dst << src.rdbuf();
 }
 
 bool Client::file_exists(std::string path, std::string filename) {
@@ -285,17 +295,23 @@ void Client::userInterface() {
             std::cout << "Upload " << input << "\n";
 
             std::string filename = input.substr(input.find_last_of("\\/")+1, input.length());
+            // nesse caso o input é o path!
             input = input.substr(0, input.find_last_of("\\/"));
             std::cout << "\n!!!filename: " << filename << std::endl;
             std::cout << "!!!path: " << input << std::endl;
 
-
             bool fileExists = file_exists(input, filename);
             if(fileExists) {
+                std::string original_path = input + '/' + filename;
+                std::string copy_path = this->dir + '/' + filename;
+                copy_file(original_path, copy_path);
+                
+                /* DEPENDENDO DA PRA VER SE COLOCA NA WATCHED_FILES OU DEIXA PRA CHECK_FILES FAZER ISSO */
+                
                 //std::cout << "\nVou entrar na mtime!";
-                time_t mtime = get_mtime(input);
+                //time_t mtime = get_mtime(input);
                 //std::cout << "\nmtime: " << mtime << "\n";
-                communication.upload_command(1, filename, input, mtime);
+                //communication.upload_command(1, filename, input, mtime);
                 std::cout << "\nEnviou!\n"; 
             } else {
                 std::cout << "\nNão foi possível enviar o arquivo porque ele não existe.\n";
@@ -323,31 +339,17 @@ void Client::userInterface() {
             std::cout << "\nDelete " << input << "\n";
             bool fileExists = file_exists(this->dir, input);
             if(fileExists) {
-                communication.delete_command(3, input, this->dir);
+                /* do novo jeito a ideia é  deletar o arquivo do file e aí a check_files (?) que vai verificar que tem arquivo deletado e envia o comando*/
+                //communication.delete_file(input);
+                std::string path = this->dir + '/' + input;
+                //std::cout << "\n!!!!DELETANDO O ARQUIVOOO: " << path;
+                communication.delete_file(path);
+                //communication.delete_command(3, input, this->dir);
                 // removeu da pasta, agora remove dos watched files
                 remove_from_watched_files(input);
             } else {
                 std::cout << "\nNão foi possível deletar o arquivo porque ele não existe.\n";
             }
-
-
-/*
-            if (argument == "")
-                std::cout << "Delete needs argument <file>";
-
-            else
-            {
-                std::string fileName = dir + "/" + argument;
-
-                if (unlink(fileName.c_str()) == -1)
-                    std::cout << "Error on Delete file: " << fileName << "\n";
-
-                else
-                {
-                    std::cout << "Deleted file: " << fileName << "\n";
-                }
-            }
-*/
         }
         else if(command == "list_server") {
             std::cout << "List Server \n";

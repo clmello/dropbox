@@ -46,6 +46,7 @@ public:
     void printWatchedFies();
     void *check_files_loop();
     static void *check_files_helper(void* void_args);
+    void copy_file(std::string original_path, std::string copy_path);
     std::string createSyncDir();
     bool file_exists(std::string path, std::string filename);
     //void syncClient();

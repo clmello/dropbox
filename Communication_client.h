@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h> 
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -42,7 +42,7 @@ public:
 	void send_file(std::string filename, std::string path);
 	void send_mtime(time_t mtime);
  	void receive_header(struct packet *_header);
-	void receive_payload(struct packet *pkt);
+	long int receive_payload(struct packet *pkt, int type);
 	void receive_file(std::string path);
 	int receive_int();
 	long get_file_size(FILE *fp);

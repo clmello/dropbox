@@ -51,7 +51,7 @@ bool Communication_client::connect_client_server(Client client) {
 	if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
 		std::cerr << "ERROR connecting with server\n";
 		return connected;
-	} 
+	}
 
 	// SEND USERNAME
 	const char* payload = username.c_str();
@@ -112,7 +112,7 @@ void Communication_client::send_command(int command) {
     pkt.total_size = 1;
     pkt.length = sizeof(int);
 	pkt._payload = (const char*)&command;
-	
+
 	// send header
 	// write in the socket
 	buffer = (char*)&pkt;
@@ -120,7 +120,7 @@ void Communication_client::send_command(int command) {
 	while (bytes_sent < header_size)
 	{
 	    n = write(sockfd, &buffer[bytes_sent], header_size - bytes_sent);
-        if (n < 0) 
+        if (n < 0)
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
@@ -131,7 +131,7 @@ void Communication_client::send_command(int command) {
 	while (bytes_sent < pkt.length)
 	{
 	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
-        if (n < 0) 
+        if (n < 0)
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
@@ -150,29 +150,29 @@ void Communication_client::send_filename(std::string filename) {
     pkt.length = 9;
 	pkt._payload = payload;
     std::cout << "\n\nfilename: " << pkt._payload << std::endl;
-    
+
 	// copy pkt to buffer
 	buffer = (char*)&pkt;
-	
+
 	// send header
 	/* write in the socket */
 	bytes_sent = 0;
 	while (bytes_sent < header_size)
 	{
 	    n = write(sockfd, &buffer[bytes_sent], header_size - bytes_sent);
-        if (n < 0) 
+        if (n < 0)
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
     std::cout << "bytes sent: " << bytes_sent << std::endl;
-    
+
     //send payload
 	/* write in the socket */
 	bytes_sent = 0;
 	while (bytes_sent < pkt.length)
 	{
 	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length - bytes_sent);
-        if (n < 0) 
+        if (n < 0)
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
@@ -184,19 +184,19 @@ void Communication_client::send_file(std::string filename, std::string path){
 	std::string complete_path = path + "/" + filename;
 	//std::cout << "PATH COMPLETO SEND_FILE:" << complete_path;
 	FILE *fp = fopen(complete_path.c_str(), "r");
-    
+
 	if(fp == NULL)
         std::cout << "Error opening file " << complete_path << std::endl;
-    
+
     // Get the size of the file
     fseek(fp, 0 , SEEK_END);
     long total_payload_size = ftell(fp);
     // Go back to the beginning
     fseek(fp, 0 , SEEK_SET);
-    
+
     // The type of the packet being sent is 0 (data)
     uint16_t type = 0;
-    
+
     // If the data is too large to send in one go, divide it into separate packets.
     // Get the number of packets necessary (total_size)
     float total_size_f = (float)total_payload_size/(float)payload_size;
@@ -204,12 +204,12 @@ void Communication_client::send_file(std::string filename, std::string path){
     if (total_size_f > total_size)
         total_size ++;
     std::cout << "\n\ntotal size: " << total_size;
-    
+
     int i;
     int total_bytes_sent = 0;
     //std::cout << "\n\nenviando: " << std::endl;
 	//printf("%.*s\n", payload_size, buffer);
-    
+
     // Send each packet
     // If only one packet will be sent, the program will go through the loop only once
     for(i=1; i<=total_size; i++)
@@ -219,25 +219,25 @@ void Communication_client::send_file(std::string filename, std::string path){
         pkt.type = type;
         pkt.seqn = i;
         pkt.total_size = total_size;
-        
+
         // If the chunk of the file that will be sent is smaller
         //than the max payload size, send only the size needed
         if(payload_size > total_payload_size - (total_bytes_sent - header_size*(i-1)))
             pkt.length = total_payload_size - (total_bytes_sent - header_size*(i-1));
         else
             pkt.length = payload_size;
-        
+
         std::cout << std::endl << total_bytes_sent << " bytes have been sent";
         std::cout << std::endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
-        
+
         // Read pkt.length bytes from the file
         fread(file_buffer, 1, pkt.length, fp);
         // Save it to pkt._payload
         pkt._payload = file_buffer;
-        
+
         // Point buffer to pkt
         buffer = (char*)&pkt;
-        
+
         //------------------------------------------------------------------------
         // SEND HEADER
         //------------------------------------------------------------------------
@@ -246,7 +246,7 @@ void Communication_client::send_file(std::string filename, std::string path){
         while (bytes_sent < header_size)
         {
             int n = write(sockfd, &buffer[bytes_sent], header_size - bytes_sent);
-            if (n < 0) 
+            if (n < 0)
 	            printf("ERROR writing to socket\n");
 	        bytes_sent += n;
         }
@@ -257,7 +257,7 @@ void Communication_client::send_file(std::string filename, std::string path){
         std::cout << "\nseqn: " << pkt.seqn;
         std::cout << "\ntotal_size: " << pkt.total_size;
         std::cout << "\npayload_size: " << pkt.length << std::endl;
-        
+
         //------------------------------------------------------------------------
         // SEND PAYLOAD
         //------------------------------------------------------------------------
@@ -266,7 +266,7 @@ void Communication_client::send_file(std::string filename, std::string path){
         while (bytes_sent < pkt.length)
         {
             int n = write(sockfd, &pkt._payload[bytes_sent], pkt.length - bytes_sent);
-            if (n < 0) 
+            if (n < 0)
 	            printf("ERROR writing to socket\n");
 	        bytes_sent += n;
         }
@@ -293,36 +293,42 @@ void Communication_client::send_mtime(time_t mtime) {
     pkt.length = sizeof(time_t);
 	pkt._payload = payload;
     std::cout << "\n\nfilename: " << pkt._payload << std::endl;
-    
+
 	// copy pkt to buffer
 	buffer = (char*)&pkt;
-	
+
 	// send header
 	// write in the socket
     int bytes_sent = 0;
 	while (bytes_sent < header_size)
 	{
 	    n = write(sockfd, &buffer[bytes_sent], header_size - bytes_sent);
-        if (n < 0) 
+        if (n < 0)
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
     std::cout << "bytes sent: " << bytes_sent << std::endl;
-    
+
     //send payload
 	// write in the socket
 	bytes_sent = 0;
 	while (bytes_sent < pkt.length)
 	{
 	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
-        if (n < 0) 
+        if (n < 0)
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
     std::cout << "bytes sent: " << bytes_sent << std::endl;
 }
 
-void Communication_client::receive_payload(struct packet *pkt) {
+// The type variable defines the type of output:
+// 0 -> just return 0 (the pkt will be used by the caller)
+// 1 -> command (int)
+// 2 -> mtime (time_t)
+// Since time_t is a signed integer that can be 32 or 64 bits long (depending on
+//the system), we return a long int (64 bits signed integer)
+long int Communication_client::receive_payload(struct packet *pkt, int type) {
     //std::cout << "\nENTREI NO RECEIVE_PAYLOAD\n\n";
     receive_header(pkt);
     //std::cout << "Saiu do header\n";
@@ -335,27 +341,29 @@ void Communication_client::receive_payload(struct packet *pkt) {
         int n = read(sockfd, buffer, pkt->length - bytes_received);
         if (n < 0)
             printf("ERROR reading from socket");
-            
+
         bytes_received+=n;
         //std::cout << "\nEstou no while do receive_payload";
 		std::cout << "\nbytes lidos: " << bytes_received << std::endl;
         std::cout << "\npkt lenght: " << pkt->length;
 	}
     //std::cout << "\nbytes lidos: " << bytes_received;
-
-    //std::cout << "\nSaiu do while do receive_payload";
 	pkt->_payload = (const char*)buffer;
-	
-	if(pkt->type != 1){ // If the packet is not a command
-	    //std::cout << "\n" << sockfd << ": payload(char*): ";
-	    //printf("%.*s\n", payload_size, pkt->_payload);
-    }
-    else{ // If the packet is a command
-	    //cout << "\n" << sockfd << ": payload(int): ";
-        int command;
-        memcpy(&command, pkt->_payload, pkt->length);
-        std::cout << command;
-    }
+	switch (type)
+	{
+		case 1:{
+	        int command;
+	        memcpy(&command, pkt->_payload, pkt->length);
+	        //cout << command;
+	        return command;
+		}
+		case 2:{
+			time_t mtime= *(time_t*)pkt->_payload;
+			return mtime;
+		}
+		default:
+			return 0;
+	}
 }
 
 void Communication_client::receive_header(struct packet *_header) {
@@ -375,7 +383,7 @@ void Communication_client::receive_header(struct packet *_header) {
         if (n < 0) {
             printf("ERROR reading from socket");
         }
-            
+
         bytes_received+=n;
 		std::cout << "\nbytes lidos: " << bytes_received;
         std::cout << "\nheader size: " << header_size;
@@ -414,32 +422,29 @@ void Communication_client::receive_header(struct packet *_header) {
 
 int Communication_client::receive_int() {
     packet pkt;
-    receive_payload(&pkt);
-    int integer;
-    memcpy(&integer, pkt._payload, pkt.length);
-    return integer;
+    return receive_payload(&pkt, 1);
 }
 
 void Communication_client::receive_file(std::string path) {
     FILE *fp = fopen(path.c_str(), "w");
     if(fp==NULL)
-        std::cout << "\nERROR OPENING " << path << std::endl; 
+        std::cout << "\nERROR OPENING " << path << std::endl;
 
-    
+
     struct packet pkt;
-    receive_payload(&pkt);
+    receive_payload(&pkt, 0);
     uint32_t total_size = pkt.total_size;
     std::cout << "pkt total size: " << pkt.total_size;
     std::cout << "\n\nTHE CLIENT WILL RECEIVE " << total_size << " PACKETS!\n";
-    
+
     // Write the first payload to the file
     ssize_t bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
     //std::cout << "\nComecei a escrever no file pqp";
     if (bytes_written_to_file < pkt.length)
         std::cout << "\nERROR WRITING TO " << path << std::endl;
-    
+
     //std::cout << bytes_written_to_file << " bytes written to file" << std::endl;
-    
+
     // Receive all the [total_size] packets
     // It starts at 2 because the first packet has already been received
     int i;
@@ -447,7 +452,7 @@ void Communication_client::receive_file(std::string path) {
     {
         std::cout << "\ni: " << i << "/" << total_size;
         // Receive payload
-        receive_payload(&pkt);
+        receive_payload(&pkt, 0);
         // Write it to the file
         bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
         if (bytes_written_to_file < pkt.length)
@@ -463,7 +468,7 @@ long Communication_client::get_file_size(FILE *fp) {
     long size = ftell(fp);
     // Go back to the beginning
     fseek(fp, 0 , SEEK_SET);
-    
+
     fclose(fp);
     return size;
 }
@@ -504,7 +509,7 @@ Client::file Communication_client::download_command(int command, std::string fil
 	//std::cout << "\nENTREI NA DOWNLOAD_COMMAND";
     //std::cout << "\nfilename recebido: " << filename;
     //std::cout << "\npath recebido: " << path;
-    
+
     // send command download (2)
 	send_command(command);
 
@@ -529,8 +534,7 @@ Client::file Communication_client::download_command(int command, std::string fil
     std::cout << "\nNão devia mas veio mesmo assim ué";
 	// receive mtime
     struct packet pkt;
-    receive_payload(&pkt);
-	time_t mtime = *(time_t*)pkt._payload;
+	time_t mtime = receive_payload(&pkt, 2);
     std::cout << "\nmtime: " << mtime << std::endl;
     std::cout << "\nmtime recebido: " << mtime;
 
@@ -541,7 +545,7 @@ Client::file Communication_client::download_command(int command, std::string fil
 	receive_file(path);
 
 	return download_file;
-	
+
 }
 
 void Communication_client::delete_command(int command, std::string filename, std::string path) {
@@ -571,7 +575,7 @@ void Communication_client::list_server_command(int command) {
     }
 
     struct packet pkt;
-    receive_payload(&pkt);
+    receive_payload(&pkt, 0);
     std::cout << "\n\nlist_server: " << pkt._payload << std::endl << std::endl;
 }
 

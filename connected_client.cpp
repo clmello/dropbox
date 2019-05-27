@@ -9,6 +9,9 @@ void Connected_client::init(string username, int sockfd, int num_connections, in
 	this->user_files_pointer = &user_files;
 	this->user_files_mutex_pointer = &user_files_mutex;
 
+	if (pthread_mutex_init(&user_files_mutex, NULL) != 0)
+        cout << endl << "Error on mutex_init";
+
 	com.Init(port, header_size, max_payload);
 }
 

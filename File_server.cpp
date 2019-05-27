@@ -9,6 +9,9 @@ File_server::File_server(string path, time_t mtime)
     reading = 0;
     writing = false;
     wants_to_write = false;
+
+	if (pthread_mutex_init(&mutex, NULL) != 0)
+        cout << endl << "Error on mutex_init";
 }
 
 void File_server::start_reading()

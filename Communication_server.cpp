@@ -935,11 +935,12 @@ string Communication_server::get_files_and_mtime(vector<File_server> *user_files
 		strstream << path.substr(path.find_last_of("\\/")+1, path.length());
 
 		// Add the mtime to the return string
-		time_t mtime = (*user_files)[i].get_mtime();
-		tm* timePtr = localtime(&mtime);
-		strstream << "("
-					<< timePtr->tm_mday << "/" << timePtr->tm_mon << "/" << timePtr->tm_year << " "
-					<< timePtr->tm_hour << ":" << timePtr->tm_min << ":" << timePtr->tm_sec << ") ";
+		time_t t = (*user_files)[i].get_mtime();
+        struct tm lt;
+        localtime_r(&t, &lt);
+        char timebuf[80];
+        strftime(timebuf, sizeof(timebuf), "%c", &lt);
+		strstream << "(" << timebuf << ") ";
 	}
 	string return_str = strstream.str();
 	if(return_str != "")

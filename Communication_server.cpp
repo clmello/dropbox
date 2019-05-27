@@ -53,7 +53,11 @@ void Communication_server::receive_header(int sockfd, struct packet *header)
     free(buffer);
 }
 
-int Communication_server::receive_payload(int sockfd, struct packet *pkt, bool is_command)
+// The type variable defines the type of payload being received:
+// 0 -> not defined
+// 1 -> command
+// 2 -> mtime
+long int Communication_server::receive_payload(int sockfd, struct packet *pkt, int type)
 {
 	char *buffer = (char*)malloc(max_payload);
     //cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_PAYLOAD\n\n";
@@ -71,7 +75,25 @@ int Communication_server::receive_payload(int sockfd, struct packet *pkt, bool i
 	}
 	//cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
 	pkt->_payload = (const char*)buffer;
+	switch (type)
+	{
+		case 1:{
+	        int command;
+	        memcpy(&command, pkt->_payload, pkt->length);
+	        //cout << command;
+	        return command;
+		}
+		case 2:{
+			time_t mtime= *(time_t*)pkt->_payload;
+			return mtime;
+		}
+		default:
+			return 0;
+	}
+	/*
 	if(pkt->type != 1){ // If the packet is not a command
+		time_t mtime2 = *(time_t*)pkt->_payload;
+		std::cout << "\n\nRECEBENDO MTIME: " << mtime2 << std::endl << std::endl;
 	    //cout << "\n" << sockfd << ": payload(char*): ";
 	    //printf("%.*s\n", max_payload, pkt->_payload);
     }
@@ -84,7 +106,7 @@ int Communication_server::receive_payload(int sockfd, struct packet *pkt, bool i
     }
     //cout << endl << endl;
 	free(buffer);
-	return 0;
+	return 0;*/
 }
 
 void *Communication_server::receive_commands(int sockfd, string username, int *thread_finished, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)//, vector<Connected_client> *connected_clients)
@@ -96,7 +118,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
         // Wait for a command
         cout << endl << sockfd << ": waiting for command";
         struct packet pkt;
-        int command = receive_payload(sockfd, &pkt, true);
+        int command = receive_payload(sockfd, &pkt, 1);
 
 
 		// Here, after every command the server sends a code (int) to the user:
@@ -124,14 +146,13 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 
                 string path = getenv("HOME");
                 // Receive the file name
-                receive_payload(sockfd, &pkt, false);
+                receive_payload(sockfd, &pkt, 0);
                 string filename = pkt._payload;
                 path = path + "/server_sync_dir_" + username + "/" + filename;
                 //cout << "String path: " << path << endl;
 
                 // Receive mtime
-                receive_payload(sockfd, &pkt, false);
-                time_t mtime = *(time_t*)pkt._payload;
+                time_t mtime = receive_payload(sockfd, &pkt, 2);
                 //cout << "mtime: " << mtime << endl;
 
 				//TODO: Pede para escrever no arquivo (mutex)
@@ -158,8 +179,9 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 
                 string path = getenv("HOME");
                 // Receive the file name
-                receive_payload(sockfd, &pkt, false);
+                receive_payload(sockfd, &pkt, 0);
                 string filename = pkt._payload;
+				filename.resize(pkt.length);
                 path = path + "/server_sync_dir_" + username + "/" + filename;
                 cout << "\npath: " << path;
 
@@ -181,8 +203,8 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 
                 //Send mtime
                 time_t mtime = get_mtime(filename, username, user_files, user_files_mutex);
-                char* mtime_char = (char*)&mtime;
-                send_string(sockfd, mtime_char);
+				//cout << endl << endl << "SENDING MTIME: " << mtime << endl << endl;
+                send_mtime(sockfd, mtime);
 
                 // Send file
                 send_file(sockfd, path);
@@ -198,7 +220,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 cout << endl << sockfd << ": command 2 received";
 
                 string path = getenv("HOME");
-                receive_payload(sockfd, &pkt, false);
+                receive_payload(sockfd, &pkt, 0);
                 string filename = pkt._payload;
                 path = path + "/server_sync_dir_" + username + "/" + filename;
                 cout << "String path: " << path;
@@ -463,6 +485,51 @@ void Communication_server::send_int(int sockfd, int number)
     }
 }
 
+void Communication_server::send_mtime(int sockfd, time_t mtime) {
+    const char* payload = (char*)&mtime;
+    int n;
+
+    // Create the packet that will be sent
+    packet pkt;
+    pkt.type = 0;
+    pkt.seqn = 1;
+    pkt.total_size = 1;
+    pkt.length = sizeof(time_t);
+	pkt._payload = payload;
+
+	time_t mtime2 = *(time_t*)pkt._payload;
+	std::cout << "\n\nENVIANDO MTIME: " << mtime2 << std::endl << std::endl;
+
+	// copy pkt to buffer
+	char* buffer = (char*)&pkt;
+
+	// send header
+	// write in the socket
+    int bytes_sent = 0;
+	while (bytes_sent < header_size)
+	{
+	    n = write(sockfd, &buffer[bytes_sent], header_size - bytes_sent);
+        if (n < 0)
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+    std::cout << "bytes sent: " << bytes_sent << std::endl;
+
+    //send payload
+	// write in the socket
+	bytes_sent = 0;
+	while (bytes_sent < pkt.length)
+	{
+	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+        if (n < 0)
+		    printf("ERROR writing to socket\n");
+		bytes_sent += n;
+    }
+	time_t mtime3 = *(time_t*)pkt._payload;
+	std::cout << "\n\nENVIANDO MTIME: " << mtime3 << std::endl << std::endl;
+    std::cout << "bytes sent: " << bytes_sent << std::endl;
+}
+
 void Communication_server::send_file(int sockfd, string path)
 {
     char* buffer;// = (char*)malloc(packet_size);
@@ -583,7 +650,7 @@ void Communication_server::receive_file(int sockfd, string path)
     // Get the number of packets to be received
     // To do that, we must receive the first packet
     struct packet pkt;
-    receive_payload(sockfd, &pkt, false);
+    receive_payload(sockfd, &pkt, 0);
     uint32_t total_size = pkt.total_size;
     //cout << "\n\nTHE SERVER WILL RECEIVE " << total_size << " PACKETS!\n";
     // Write the first payload to the file
@@ -599,7 +666,7 @@ void Communication_server::receive_file(int sockfd, string path)
     for(i=2; i<=total_size; i++)
     {
         // Receive payload
-        receive_payload(sockfd, &pkt, false);
+        receive_payload(sockfd, &pkt, 0);
         // Write it to the file
         bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
         if (bytes_written_to_file < pkt.length)

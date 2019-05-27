@@ -240,6 +240,9 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 //remove_watched_file(filename);
 				//TODO: libera escrita do arquivo? acho que sim, mas depois
 				//remove o objeto File_server do vetor de File_server
+				//TODO: Na real não. O arquivo vai continuar no vetor, mas seta mtime pra -1
+				//Quando um outro client pedir get_sync_dir, vai ver que é -1 e saber que precisa
+				//deletar o arquivo
 				// Remove file from the user_files vector
 				remove_file(path, user_files, user_files_mutex);
 				// This function unlocks the mutex as a writer
@@ -969,7 +972,9 @@ void Communication_server::remove_file(string path, vector<File_server> *user_fi
 	{
 		if((*user_files)[i].get_path() == path){
 			// Remove the File_server object from the vector
-			(*user_files).erase((*user_files).begin()+i);
+			//(*user_files).erase((*user_files).begin()+i);
+			// Set mtime to -1
+			(*user_files)[i].set_mtime(-1);
 		}
 	}
 

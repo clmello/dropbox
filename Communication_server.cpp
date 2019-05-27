@@ -288,43 +288,34 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
             {
                 cout << endl << sockfd << ": command 6 received";
 
-                // Open sync_dir folder
-                string path = getenv("HOME");
-                path = path + "/server_sync_dir_" + username;
-                DIR *fileDir;
-                struct dirent *lsdir;
-                fileDir = opendir(path.c_str());
-
-                // Get the number of files
-                int number_of_files = 0;
-                while ((lsdir = readdir(fileDir)) != NULL){
-                    if(lsdir->d_name[0] != '.')
-                        number_of_files++;
-                }
-                rewinddir(fileDir);
-
                 // Send number of files to the client
-                string number_of_files_str = to_string(number_of_files);
+                string number_of_files_str = (char *)((*user_files).size());
                 //cout << "\nnumber of files: " << number_of_files_str << endl;
                 send_string(sockfd, number_of_files_str);
 
                 // Send the name of each file and its mtime
-                while ((lsdir = readdir(fileDir)) != NULL){
-                    if(lsdir->d_name[0] != '.'){
-                        // Send filename
-                        send_string(sockfd, lsdir->d_name);
+				// Since any thread of the same user could be editing the user_files vector,
+				//we need mutual exclusion
+				pthread_mutex_lock(user_files_mutex);
 
-                        // Get mtime
-                        time_t mtime = get_mtime(lsdir->d_name, username, user_files, user_files_mutex);
-                        char* mtime_char = (char*)&mtime;
-                        // Send mtime
-                        send_string(sockfd, mtime_char);
-                    }
-                }
+				// Go through all the files and send the name of each file and its mtime
+				for(int i=0; i<user_files->size(); i++)
+				{
+					// Send filename
+					string path = (*user_files)[i].get_path();
+					send_string(sockfd, path.substr(path.find_last_of("\\/")+1, path.length()));
+
+					// Send mtime
+					time_t mtime = (*user_files)[i].get_mtime();
+					send_mtime(sockfd, mtime);
+				}
+
+				// Unlock the mutex for editing the user_files vector
+				pthread_mutex_unlock(user_files_mutex);
+
 				//TODO: receive files from the client, if they are more recent
 				// Na real não precisa. Só manda os mtimes pro cliente. Ele decide
 				//se quer fazer download/upload de algum arquivo.
-                closedir(fileDir);
 
                 break;
             }

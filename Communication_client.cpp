@@ -508,9 +508,10 @@ Client::file Communication_client::download_command(int command, std::string fil
     // send command download (2)
 	send_command(command);
 
-    // resposta do server
+    // resposta do server se já fechou ou não
     // Receive return int
     if(receive_int() < 0){
+        // se o server fechou não aceita mais nenhum comando do client que não seja o exit
         std::cout << "\nServer closed\n";
         exit(0);
     }
@@ -518,6 +519,14 @@ Client::file Communication_client::download_command(int command, std::string fil
 	// send filename
 	send_filename(filename);
 
+    if(receive_int() < 0){
+        // se entrar aqui é porque o file não existe no server, logo não tem o que ser baixado
+        std::cout << "\nFile doesn't exists at server.\n";
+        download_file.mtime = -1;
+        return download_file;
+    }
+
+    std::cout << "\nNão devia mas veio mesmo assim ué";
 	// receive mtime
     struct packet pkt;
     receive_payload(&pkt);

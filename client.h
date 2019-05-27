@@ -47,7 +47,7 @@ public:
     void *check_files_loop();
     static void *check_files_helper(void* void_args);
     std::string createSyncDir();
-    bool file_exists(std::string filename);
+    bool file_exists(std::string path, std::string filename);
     //void syncClient();
     void remove_from_watched_files(std::string filename);
     void userInterface();

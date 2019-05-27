@@ -210,20 +210,24 @@ void *Client::check_files_helper(void* context) {
     return ((Client *)context)->check_files_loop();
 }
 
-bool Client::file_exists(std::string filename) {
+bool Client::file_exists(std::string path, std::string filename) {
+    //std::cout << "\nvai verificar se o file existe";
+   // std::cout << "\npath na file_exists: " << path;
     DIR *fileDir; 
     struct dirent *lsdir;
-    fileDir= opendir(dir.c_str());
+    fileDir= opendir(path.c_str());
 
     while ((lsdir = readdir(fileDir)) != NULL)
     {
         if(lsdir->d_name[0] != '.') { // Ignora . e ..
+            //std::cout << "\nNome do arquivo do diretório: " << lsdir->d_name;
             if(lsdir->d_name == filename) {
                 printf("%s\n", lsdir->d_name);
                 return true;
             }
         }
     }
+    //std::cout << "\nNão achou";
     return false;
 }
 
@@ -253,9 +257,7 @@ void Client::remove_from_watched_files(std::string filename) {
     {
         if(filename == watched_files[i].name)
             //std::cout << "\n\nwatched_file: "<< watched_files[i].name << "\tfilename: " << filename;
-            watched_files.erase(watched_files.begin()+i);
-
-        
+            watched_files.erase(watched_files.begin()+i);  
     }
 }
 
@@ -281,17 +283,20 @@ void Client::userInterface() {
 
         if(command == "upload") {
             std::cout << "Upload " << input << "\n";
-            std::string filename = input.substr(input.find_last_of("\\/")+1, input.length());
-            std::cout << "\n!!!filename: " << filename << std::endl;
-            std::cout << "!!!path: " << this->dir << std::endl;
 
-            bool fileExists = file_exists(filename);
+            std::string filename = input.substr(input.find_last_of("\\/")+1, input.length());
+            input = input.substr(0, input.find_last_of("\\/"));
+            std::cout << "\n!!!filename: " << filename << std::endl;
+            std::cout << "!!!path: " << input << std::endl;
+
+
+            bool fileExists = file_exists(input, filename);
             if(fileExists) {
                 //std::cout << "\nVou entrar na mtime!";
                 time_t mtime = get_mtime(input);
                 //std::cout << "\nmtime: " << mtime << "\n";
-                communication.upload_command(1, filename, this->dir, mtime);
-                // metodo pra upload
+                communication.upload_command(1, filename, input, mtime);
+                std::cout << "\nEnviou!\n"; 
             } else {
                 std::cout << "\nNão foi possível enviar o arquivo porque ele não existe.\n";
             }
@@ -303,14 +308,20 @@ void Client::userInterface() {
             std::cout << "\npath: " << path;
             file auxfile;
             file downloadFile = communication.download_command(2, input, path, auxfile);
-            std::cout << "\nJá passei pela download_command e recebi de volta:";
-            std::cout << "\ndownloadFile.name: " << downloadFile.name;
-            std::cout << "\ndownloadFile.mtime" << downloadFile.mtime;
+            
+            if(downloadFile.mtime == -1) {
+                std::cout << "\nCan't download file beacuse it doesn't exists at server.";
+            } else {
+                std::cout << "\nJá passei pela download_command e recebi de volta:";
+                std::cout << "\nDownloaded file: " << downloadFile.name;
+                std::cout << "\ndownloadFile.mtime" << downloadFile.mtime;
+                this->watched_files.push_back(downloadFile);
+            }
             // metodo pra download
         }
         else if(command == "delete") {
             std::cout << "\nDelete " << input << "\n";
-            bool fileExists = file_exists(input);
+            bool fileExists = file_exists(this->dir, input);
             if(fileExists) {
                 communication.delete_command(3, input, this->dir);
                 // removeu da pasta, agora remove dos watched files

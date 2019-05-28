@@ -333,9 +333,9 @@ void Client::userInterface() {
         }
         else if(command == "download") {
             std::cout << "\nDownload " << input << "\n";
-			std::string path = getenv("HOME");
-			//std::string path = this->download_path + '/' + input;
-			path = path + '/' + input;       
+			//std::string path = getenv("HOME");
+			std::string path = this->download_path + '/' + input;
+			//path = path + '/' + input;       
 			std::cout << "\npath: " << path;
             file downloadFile;
             communication.download_command(2, input, path, &downloadFile);

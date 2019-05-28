@@ -17,6 +17,8 @@ Communication_client communication;
 
 bool running;
 
+pthread_mutex_t socket_mtx;
+
 Client::Client(std::string username, std::string hostname, int port){
     this->username = username;
 	this->hostname = hostname;
@@ -292,6 +294,7 @@ void Client::userInterface() {
 
     while(running) {
        std::getline(std::cin, input);
+        command = "";
         command = input.substr(0, input.find(" "));
         input = input.substr(input.find(" ") + 1, input.length());
 
@@ -364,7 +367,6 @@ void Client::userInterface() {
 
         //
         else if(command == "list_client") {
-            // vai ter que se comunicar com o server pra receber o int de voltar, mas só pra isso
             std::cout << "List Client \n";
             DIR *fileDir;
             struct dirent *lsdir;
@@ -428,6 +430,7 @@ int main(int argc, char **argv) {
     }
 
     running = true;
+    pthread_mutex_init(&socket_mtx, NULL);
 
     // Cria diretório de sincronização
     std::string dir = client.createSyncDir();

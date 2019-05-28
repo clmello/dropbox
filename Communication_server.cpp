@@ -354,7 +354,7 @@ void *Communication_server::receive_commands_helper(void* void_args)
 
 void Communication_server::send_string(int sockfd, string str)
 {
-	cout << "\nsending string: " << str;
+	//cout << "\nsending string: " << str;
     char* buffer = (char*)malloc(packet_size);
     // If the string is too large to send in one go, divide it into separate packets.
     // Get the number of packets necessary (total_size)
@@ -908,7 +908,6 @@ void Communication_server::start_writing_file(string path, vector<File_server> *
 	bool file_found=false;
 	for(int i=0; i<user_files->size(); i++)
 	{
-		cout << "\nuser_files[" << i << "]: " << (*user_files)[i].get_path() << " " << (*user_files)[i].get_mtime();
 		if((*user_files)[i].get_path() == path){
 			file_found=true;
 
@@ -949,7 +948,6 @@ void Communication_server::done_writing_file(string path, vector<File_server> *u
 	bool file_found = false;
 	for(int i=0; i<user_files->size(); i++)
 	{
-		cout << "\nuser_files[" << i << "]: " << (*user_files)[i].get_path() << " " << (*user_files)[i].get_mtime();
 		if((*user_files)[i].get_path() == path){
 			file_found = true;
 			File_server *file_buffer = &(*user_files)[i];
@@ -998,10 +996,10 @@ string Communication_server::get_files_and_mtime(vector<File_server> *user_files
 	strstream.str("");
 	for(int i=0; i<user_files->size(); i++)
 	{
-		cout << endl << (*user_files)[i].get_path() << " " << (*user_files)[i].get_mtime();
+		//cout << endl << (*user_files)[i].get_path() << " " << (*user_files)[i].get_mtime();
 		if((*user_files)[i].get_mtime() > 0)
 		{
-			cout << "\nENTREI!\n";
+			//cout << "\nENTREI!\n";
 			// Add the file name to the return string
 			string path = (*user_files)[i].get_path();
 			strstream << path.substr(path.find_last_of("\\/")+1, path.length());

@@ -484,6 +484,9 @@ int Communication_client::delete_file(std::string path) {
 
 
 void Communication_client::upload_command(int command, std::string filename, std::string path, time_t mtime) {
+	// Lock mutex to make sure that the other thread won't execute other commands while this command is running
+	pthread_mutex_lock(&socket_mtx);
+
 	//send command upload (1)
 	send_command(command);
 
@@ -502,12 +505,18 @@ void Communication_client::upload_command(int command, std::string filename, std
 
 	//send file
 	send_file(filename, path);
+
+	// Unlock mutex
+	pthread_mutex_unlock(&socket_mtx);
 }
 
 void Communication_client::download_command(int command, std::string filename, std::string path, Client::file *download_file) {
 	//std::cout << "\nENTREI NA DOWNLOAD_COMMAND";
     //std::cout << "\nfilename recebido: " << filename;
     //std::cout << "\npath recebido: " << path;
+
+	// Lock mutex to make sure that the other thread won't execute other commands while this command is running
+	pthread_mutex_lock(&socket_mtx);
 
     // send command download (2)
 	send_command(command);
@@ -545,9 +554,14 @@ void Communication_client::download_command(int command, std::string filename, s
 			std::cout << "\nstat error\n";
 		download_file->local_mtime = fileattrib.st_mtime;
 	}
+	// Unlock mutex
+	pthread_mutex_unlock(&socket_mtx);
 }
 
 void Communication_client::delete_command(int command, std::string filename, std::string path) {
+	// Lock mutex to make sure that the other thread won't execute other commands while this command is running
+	pthread_mutex_lock(&socket_mtx);
+
     send_command(command);
 
     // resposta do server
@@ -562,9 +576,15 @@ void Communication_client::delete_command(int command, std::string filename, std
     //path = path + '/' + filename;
     //std::cout << "\ndelete path: " << path;
     //delete_file(path);
+
+	// Unlock mutex
+	pthread_mutex_unlock(&socket_mtx);
 }
 
 void Communication_client::list_server_command(int command) {
+	// Lock mutex to make sure that the other thread won't execute other commands while this command is running
+	pthread_mutex_lock(&socket_mtx);
+
     send_command(command);
 
     // Receive return int
@@ -575,12 +595,20 @@ void Communication_client::list_server_command(int command) {
 
     struct packet pkt;
     receive_payload(&pkt, 0);
-    std::cout << "\n\nlist_server: " << pkt._payload << std::endl << std::endl;
+	std::string ls = pkt._payload;
+	ls.resize(pkt.length);
+
+	// Unlock mutex
+	pthread_mutex_unlock(&socket_mtx);
+    std::cout << "\n\nlist_server: " << ls << std::endl << std::endl;
 }
 
 
 void Communication_client::get_sync_dir(int command, std::vector<Client::file> *watched_files, std::string path) {
 	Client::file download_file;
+
+	// Lock mutex to make sure that the other thread won't execute other commands while this command is running
+	pthread_mutex_lock(&socket_mtx);
 
     send_command(command);
 
@@ -594,8 +622,10 @@ void Communication_client::get_sync_dir(int command, std::vector<Client::file> *
     packet pkt;
 	int num_server_files = receive_payload(&pkt, 1);
 
-	std::cout << "\nFILES ON SERVER (contando os que foram deletados): " << num_server_files << "\n\n";
+	//std::cout << "\nFILES ON SERVER (contando os que foram deletados): " << num_server_files << "\n\n";
 
+	std::vector<std::string> file_names;
+	std::vector<time_t> mtimes;
     //recebe o filename e o mtime de cada arquivo
     for(int i = 1; i <= num_server_files; i++) {
 
@@ -603,12 +633,24 @@ void Communication_client::get_sync_dir(int command, std::vector<Client::file> *
         receive_payload(&pkt, 0);
         std::string server_filename = pkt._payload;
 		server_filename.resize(pkt.length);
-		std::string complete_path = path + '/' + server_filename;
+
+		file_names. push_back(server_filename);
 
         // recebe o mtime
         time_t server_mtime = receive_payload(&pkt, 2);
 
-		std::cout << "\nserver filename: \'" << server_filename << "\'" << std::endl << "server mtime: " << server_mtime << std::endl;
+		mtimes.push_back(server_mtime);
+
+		//std::cout << "\nserver filename: \'" << server_filename << "\'" << std::endl << "server mtime: " << server_mtime << std::endl;
+	}
+	// Unlock the mutex (The interaction with the server for this command ends here. Now it will execute other commands).
+	pthread_mutex_unlock(&socket_mtx);
+
+	// Verifica cada nome e mtime recebido contra os arquivos locais
+	for(int i = 0; i < num_server_files; i++) {
+		std::string server_filename = file_names[i];
+		time_t server_mtime = mtimes[i];
+		std::string complete_path = path + '/' + server_filename;
 
         int watched_files_size = watched_files->size();
 	    int found = 0;
@@ -688,13 +730,17 @@ void Communication_client::remove_from_watched_files(std::string filename, std::
 }
 
 void Communication_client::exit_command(int command) {
+	// Lock mutex to make sure that the other thread won't execute other commands while this command is running
+	pthread_mutex_lock(&socket_mtx);
+
     send_command(7);
 
     // Receive return int
     if(receive_int() < 0){
         std::cout << "\nServer closed\n";
+		// Unlock mutex
+		pthread_mutex_unlock(&socket_mtx);
+	    close(sockfd);
         exit(0);
     }
-
-    close(sockfd);
 }

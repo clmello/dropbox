@@ -19,13 +19,14 @@ bool running;
 
 pthread_mutex_t socket_mtx;
 
-Client::Client(std::string username, std::string hostname, int port){
+Client::Client(std::string username, std::string hostname, int port, std::string download_path){
     this->username = username;
 	this->hostname = hostname;
 	this->port = port;
     this->isLogged = false;
     this->dir = " ";
     this->command = 0;
+	this->download_path = download_path;
 }
 
 std::string Client::getUsername() {
@@ -326,14 +327,15 @@ void Client::userInterface() {
         }
         else if(command == "download") {
             std::cout << "\nDownload " << input << "\n";
-            std::string path = getenv("HOME");
-			path = path + '/' + input;
-            std::cout << "\npath: " << path;
+			std::string path = getenv("HOME");
+			//std::string path = this->download_path + '/' + input;
+			path = path + '/' + input;       
+			std::cout << "\npath: " << path;
             file downloadFile;
             communication.download_command(2, input, path, &downloadFile);
 
             if(downloadFile.mtime == -1) {
-                std::cout << "\nCan't download file beacuse it doesn't exists at server.";
+                std::cout << "\nCan't download file beacuse it doesn't exist at server.";
             } else {
                 std::cout << "\nJá passei pela download_command e recebi de volta:";
                 std::cout << "\nDownloaded file: " << downloadFile.name;
@@ -415,9 +417,14 @@ int main(int argc, char **argv) {
 
 	std::string username = argv[1];
    	std::string host = argv[2];
-   	int port = atoi(argv[3]); // de repente pode ser um uint16?
+   	int port = atoi(argv[3]);
 
-	Client client = Client(username, host, port);
+	char cwd[1024];
+    getcwd(cwd, sizeof(cwd));
+	std::string s_cwd = cwd;
+	std::cout << "\ns_cwd " << s_cwd;
+
+	Client client = Client(username, host, port, s_cwd);
 
 	/*** CONEXÃO COM O SERVIDOR ***/
     // Voltar pra essa questão de communication ser um argumento de client:

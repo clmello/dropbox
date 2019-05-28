@@ -12,6 +12,7 @@ private:
 	bool isLogged;
     std::string dir;
     int command;
+	std::string download_path;
 
     pthread_t check_files_thread;
     //Communication_client communication;
@@ -24,7 +25,7 @@ public:
     struct file{time_t mtime; time_t local_mtime; std::string name;};
     std::vector<file> watched_files;
 
-    Client(std::string username, std::string hostname, int port);
+    Client(std::string username, std::string hostname, int port, std::string download_path);
 
     // gets e sets
     void setUsername(std::string username);

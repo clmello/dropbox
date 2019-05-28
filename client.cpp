@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <sstream>
 /* #include <boost/filesystem.hpp>
 using namespace boost::filesystem;
 
@@ -18,6 +19,8 @@ Communication_client communication;
 bool running;
 
 pthread_mutex_t socket_mtx;
+pthread_mutex_t watched_files_copy_mtx;
+std::vector<Client::file> watched_files_copy;
 
 Client::Client(std::string username, std::string hostname, int port, std::string download_path){
     this->username = username;
@@ -202,6 +205,9 @@ void *Client::check_files_loop() {
     while(running) {
         check_files();
         communication.get_sync_dir(6, &watched_files, this->dir);
+        pthread_mutex_lock(&watched_files_copy_mtx);
+        watched_files_copy = watched_files;
+        pthread_mutex_unlock(&watched_files_copy_mtx);
         sleep(10);
     }
 }
@@ -369,19 +375,21 @@ void Client::userInterface() {
 
         //
         else if(command == "list_client") {
-            std::cout << "List Client \n";
-            DIR *fileDir;
-            struct dirent *lsdir;
-
-            fileDir= opendir(dir.c_str());
-
-            while ((lsdir = readdir(fileDir)) != NULL)
-            {
-                if(lsdir->d_name[0] != '.') // Ignora . e ..
-                    printf("%s\n", lsdir->d_name);
-            }
-
-            closedir(fileDir);
+        	pthread_mutex_lock(&watched_files_copy_mtx);
+        	std::stringstream ls;
+        	ls.str("");
+        	for(int i=0; i<watched_files_copy.size(); i++)
+        	{
+		    	time_t t = watched_files[i].mtime;
+			    struct tm lt;
+			    localtime_r(&t, &lt);
+			    char timebuf[80];
+			    strftime(timebuf, sizeof(timebuf), "%c", &lt);
+			    
+        		ls << watched_files_copy[i].name << "(" << timebuf << ") ";
+        	}
+        	pthread_mutex_unlock(&watched_files_copy_mtx);
+        	std::cout << std::endl << ls.str();
         }
         else if(command == "get_sync_dir") {
             std::cout << "Get Sync Dir \n";
@@ -438,6 +446,7 @@ int main(int argc, char **argv) {
 
     running = true;
     pthread_mutex_init(&socket_mtx, NULL);
+    pthread_mutex_init(&watched_files_copy_mtx, NULL);
 
     // Cria diretório de sincronização
     std::string dir = client.createSyncDir();

@@ -15,6 +15,8 @@
 #include <pthread.h>
 
 extern pthread_mutex_t socket_mtx;
+extern pthread_mutex_t watched_files_copy_mutex;
+extern std::vector<Client::file> watched_files_copy;
 
 typedef	struct	packet{
 		uint16_t	type;			//Tipo do pacote (p.ex. DATA | CMD)

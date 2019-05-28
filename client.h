@@ -44,11 +44,13 @@ public:
 
     // rest
     void printWatchedFies();
+    void check_files();
     void *check_files_loop();
     static void *check_files_helper(void* void_args);
     void copy_file(std::string original_path, std::string copy_path);
     std::string createSyncDir();
     bool file_exists(std::string path, std::string filename);
+    void get_sync_dir_client();
     //void syncClient();
     void remove_from_watched_files(std::string filename);
     void userInterface();

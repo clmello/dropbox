@@ -475,7 +475,7 @@ long Communication_client::get_file_size(FILE *fp) {
 
 int Communication_client::delete_file(std::string path) {
     int error = 0;
-    std::cout << "path: " << path;
+    //std::cout << "path: " << path;
     error = remove(path.c_str());
     if(error != 0)
         std::cout << "\nError deleting file";
@@ -577,6 +577,77 @@ void Communication_client::list_server_command(int command) {
     struct packet pkt;
     receive_payload(&pkt, 0);
     std::cout << "\n\nlist_server: " << pkt._payload << std::endl << std::endl;
+}
+
+
+std::vector<Client::file> Communication_client::get_sync_dir(int command, std::vector<Client::file> watched_files, std::string path, Client::file auxfile, Client::file download_file) {
+    int found = 0;
+
+    send_command(command);
+
+    // recebe se o server fechou
+    if(receive_int() < 0){
+        std::cout << "\nServer closed\n";
+        exit(0);
+    }
+
+    //recebe o numero de arquivos do server
+    packet pkt;
+    int num_server_files = receive_payload(&pkt, 1);
+
+    //recebe o filename e o mtime de cada arquivo
+    for(int i = 1; i <= num_server_files; i++) {
+        
+        // recebe o filename
+        receive_payload(&pkt, 0);
+        std::string server_filename = pkt._payload;
+
+        // recebe o mtime
+        time_t server_mtime = receive_payload(&pkt, 2);
+
+        int watched_files_size = watched_files.size();
+        // percorre a watched_files pra achar as inconsistências entra os arquivos no servidor e no client
+        for(int j = 0; j < watched_files_size; j++){
+            // se acha o arquivo da server na watched_files
+            if(watched_files[j].name == server_filename) {
+                // achou
+                found = 1;
+                if(server_mtime < 0){
+                    // se o arquivo foi deletado no servidor, vai ser deletado no cliente
+                    std::string complete_path = path + '/' + server_filename;
+                    delete_file(complete_path);
+                    watched_files = remove_from_watched_files(server_filename, watched_files);
+                } else {
+                    double seconds = difftime(server_mtime, watched_files[j].mtime);
+                    if(seconds > 0) {
+                        auxfile;
+                        download_file = download_command(2, server_filename, path, auxfile);
+                        watched_files.push_back(download_file);
+                    }
+                    if (seconds < 0) {
+                        upload_command(1, server_filename, path, server_mtime);
+                    }
+                }
+            } else {
+                // found = 0
+                auxfile;
+                download_file = download_command(2, server_filename, path, auxfile);
+                watched_files.push_back(download_file);
+            }
+            found = 0;
+        }
+    }
+    return watched_files;
+}
+
+std::vector<Client::file> Communication_client::remove_from_watched_files(std::string filename, std::vector<Client::file> watched_files) {
+    for(int i=0; i < watched_files.size(); i++)
+    {
+        if(filename == watched_files[i].name)
+            //std::cout << "\n\nwatched_file: "<< watched_files[i].name << "\tfilename: " << filename;
+            watched_files.erase(watched_files.begin()+i);  
+    }
+    return watched_files;
 }
 
 void Communication_client::exit_command(int command) {

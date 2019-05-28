@@ -84,124 +84,117 @@ void Client::printWatchedFies() {
         std::cout << "\nThere are no watched files\n";
 }
 
-void *Client::check_files_loop() {
-    // enquanto a thread está aberta
-    while(this->running) {
-        int err = 0;
+void Client::check_files() {
+    int err = 0;
     
-        // If files are already being watched
-        if(this->watched_files.size()>0)
-        {
-            DIR* dir = opendir(this->dir.c_str());
-            if(dir == NULL)
-                std::cerr << "\nERROR opening folder\n";
+    // If files are already being watched
+    if(this->watched_files.size()>0)
+    {
+        DIR* dir = opendir(this->dir.c_str());
+        if(dir == NULL)
+            std::cerr << "\nERROR opening folder\n";
 
-            // For each watched file
-            for(unsigned int n = 0; n < this->watched_files.size(); n++)
-            {
-                // Looks for it in the folder
-                bool found = false;
-                for(struct dirent *d_struct = NULL; (d_struct = readdir(dir)) != NULL; )
-                {
-                    std::string fileName = d_struct->d_name;
-                    if(fileName == this->watched_files[n].name)
-                    {
-                        found = true;
+        // For each watched file
+        for(unsigned int n = 0; n < this->watched_files.size(); n++) {
+            // Looks for it in the folder
+            bool found = false;
+            for(struct dirent *d_struct = NULL; (d_struct = readdir(dir)) != NULL; ) {
+                std::string fileName = d_struct->d_name;
+                if(fileName == this->watched_files[n].name) {
+                    found = true;
 
-                        std::string file_ = this->dir + "/" + d_struct->d_name;
-                        struct stat fileattrib;
-                        if(stat(file_.c_str(), &fileattrib) < 0)
-                            std::cout << "\nstat error\n";
-
-                        // Checks if file was changed
-                        if(difftime(this->watched_files[n].mtime, fileattrib.st_mtime))
-                        {
-                            std::cout << "\n\nthe file " << d_struct->d_name << " has changed!\n It should be uploaded!\n";
-                            //std::cout << "\ntime changed: "
-                            this->watched_files[n].mtime = fileattrib.st_mtime;
-                        }
-                    }
-                }
-                // If file isn't found, then it has been deleted
-                if(!found)
-                {
-                    std::cout << "\n\nthe file " << this->watched_files[n].name << " has been deleted!\n It should be deleted on the server!\n";
-                    this->watched_files.erase(this->watched_files.begin()+n);
-                }
-                // Reset the position of the directory stream
-                rewinddir(dir);
-            }
-
-            // Checks for new files
-            rewinddir(dir);
-            if(dir == NULL)
-                std::cout << "\nERROR opening folder\n";
-
-            // For every file in the folder
-            for(struct dirent *d_struct = NULL; (d_struct = readdir(dir)) != NULL; )
-            {
-                // Looks for the file in the vector
-                bool found = false;
-                if(d_struct->d_name[0] != '.')
-                {
-                    for(unsigned int n = 0; n < this->watched_files.size(); n++)
-                    {
-                        std::string fileName = d_struct->d_name;
-                        if(fileName == this->watched_files[n].name)
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if(!found)
-                    {
-                        std::cout << "\n\nthe file " << d_struct->d_name << " is new!\n It should be uploaded!\n";
-
-                        // Start watching file
-                        std::string file_ = this->dir + "/" + d_struct->d_name;
-                        struct stat fileattrib;
-                        if(stat(file_.c_str(), &fileattrib) < 0)
-                            std::cout << "\nstat error\n";
-
-                        file newFile;
-                        newFile.name = d_struct->d_name;
-                        newFile.mtime = fileattrib.st_mtime;
-                        this->watched_files.push_back(newFile);
-                    }
-                }
-            }
-            closedir(dir);
-        }
-        // If no files are watched
-        else
-        {
-            DIR* dir = opendir(this->dir.c_str());
-            if(dir == NULL)
-                std::cout << "\nerror opening folder\n";
-
-            // Loops through files in sync_dir
-            for(struct dirent *d_struct = NULL; (d_struct = readdir(dir)) != NULL; )
-            {
-                // If there is a file
-                if(d_struct->d_name[0] != '.')
-                {
-                    // Start watching file
-                    std::string file_name = this->dir + "/" + d_struct->d_name;
+                    std::string file_ = this->dir + "/" + d_struct->d_name;
                     struct stat fileattrib;
-                    if(stat(file_name.c_str(), &fileattrib) < 0)
+                    if(stat(file_.c_str(), &fileattrib) < 0)
+                        std::cout << "\nstat error\n";
+
+                    // Checks if file was changed
+                    if(difftime(this->watched_files[n].mtime, fileattrib.st_mtime)) {
+                        std::cout << "\n\nthe file " << d_struct->d_name << " has changed!\n It should be uploaded!\n";
+                        //std::cout << "\ntime changed: "
+                        this->watched_files[n].mtime = fileattrib.st_mtime;
+                    }
+                }
+            }
+            // If file isn't found, then it has been deleted
+            if(!found) {
+                std::cout << "\n\nthe file " << this->watched_files[n].name << " has been deleted!\n It should be deleted on the server!\n";
+                this->watched_files.erase(this->watched_files.begin()+n);
+            }
+            // Reset the position of the directory stream
+            rewinddir(dir);
+        }
+
+        // Checks for new files
+        rewinddir(dir);
+        if(dir == NULL)
+            std::cout << "\nERROR opening folder\n";
+
+        // For every file in the folder
+        for(struct dirent *d_struct = NULL; (d_struct = readdir(dir)) != NULL; ) {
+            // Looks for the file in the vector
+            bool found = false;
+            if(d_struct->d_name[0] != '.') {
+                for(unsigned int n = 0; n < this->watched_files.size(); n++) {
+                    std::string fileName = d_struct->d_name;
+                    if(fileName == this->watched_files[n].name) {
+                        found = true;
+                        break;
+                    }
+                }
+                if(!found) {
+                    std::cout << "\n\nthe file " << d_struct->d_name << " is new!\n It should be uploaded!\n";
+
+                    // Start watching file
+                    std::string file_ = this->dir + "/" + d_struct->d_name;
+                    struct stat fileattrib;
+                    if(stat(file_.c_str(), &fileattrib) < 0)
                         std::cout << "\nstat error\n";
 
                     file newFile;
                     newFile.name = d_struct->d_name;
                     newFile.mtime = fileattrib.st_mtime;
-                    watched_files.push_back(newFile);
-
-                    std::cout << "\n\nthe file " << d_struct->d_name << " is new!\n It should be uploaded!\n";
+                    this->watched_files.push_back(newFile);
                 }
             }
-            closedir(dir);
         }
-        //printWatchedFies();
+    closedir(dir);
+    }
+    // If no files are watched
+    else
+    {
+        DIR* dir = opendir(this->dir.c_str());
+        if(dir == NULL)
+            std::cout << "\nerror opening folder\n";
+
+        // Loops through files in sync_dir
+        for(struct dirent *d_struct = NULL; (d_struct = readdir(dir)) != NULL; )
+        {
+            // If there is a file
+            if(d_struct->d_name[0] != '.')
+            {
+                // Start watching file
+                std::string file_name = this->dir + "/" + d_struct->d_name;
+                struct stat fileattrib;
+                if(stat(file_name.c_str(), &fileattrib) < 0)
+                    std::cout << "\nstat error\n";
+
+                file newFile;
+                newFile.name = d_struct->d_name;
+                newFile.mtime = fileattrib.st_mtime;
+                watched_files.push_back(newFile);
+
+                std::cout << "\n\nthe file " << d_struct->d_name << " is new!\n It should be uploaded!\n";
+            }
+        }
+        closedir(dir);
+    }
+}
+
+void *Client::check_files_loop() {
+    // enquanto a thread está aberta
+    while(this->running) {
+        check_files();
         sleep(40);
     }
 }
@@ -239,6 +232,14 @@ bool Client::file_exists(std::string path, std::string filename) {
     }
     //std::cout << "\nNão achou";
     return false;
+}
+
+void Client::get_sync_dir_client() {
+    // cria o diretorio
+    createSyncDir();
+
+    // inicializa as atividades de sincronização
+    //communication.get_sync_dir(6, watched_files, this->dir);
 }
 
 // Pretendo mudar pra outra classe tipo um Folder ou Util
@@ -376,6 +377,7 @@ void Client::userInterface() {
         }
         else if(command == "get_sync_dir") {
             std::cout << "Get Sync Dir \n";
+            get_sync_dir_client();
             //communication.send_command(6);
             // metodo pra get_sync_dir
         }

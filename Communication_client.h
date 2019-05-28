@@ -49,12 +49,12 @@ public:
 	int delete_file(std::string path);
 
 	void upload_command(int command, std::string filename, std::string path, time_t mtime);
-	Client::file download_command(int command, std::string filename, std::string path, Client::file download_file);
+	void download_command(int command, std::string filename, std::string path, Client::file *download_file);
 	void delete_command(int command, std::string filename, std::string path);
 	void list_server_command(int command);
-	std::vector<Client::file> get_sync_dir(int command, std::vector<Client::file> watched_files, std::string path, Client::file auxfile, Client::file download_file);
-	std::vector<Client::file> remove_from_watched_files(std::string filename, std::vector<Client::file> watched_files);
-	
+	void get_sync_dir(int command, std::vector<Client::file> *watched_files, std::string path);
+	void remove_from_watched_files(std::string filename, std::vector<Client::file> *watched_files);
+
 	void exit_command(int command);
 };
 

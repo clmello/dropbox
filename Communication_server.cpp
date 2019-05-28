@@ -148,6 +148,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 // Receive the file name
                 receive_payload(sockfd, &pkt, 0);
                 string filename = pkt._payload;
+				filename.resize(pkt.length);
                 path = path + "/server_sync_dir_" + username + "/" + filename;
                 //cout << "String path: " << path << endl;
 
@@ -183,7 +184,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 string filename = pkt._payload;
 				filename.resize(pkt.length);
                 path = path + "/server_sync_dir_" + username + "/" + filename;
-                cout << "\npath: " << path;
+                //cout << "\npath: " << path;
 
 				//TODO: Testa se arquivo existe. Se não existe, retorna erro e não faz mais nada daqui do download
 
@@ -217,11 +218,12 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
             }
             case 3: // Delete file
             {
-                cout << endl << sockfd << ": command 2 received";
+                cout << endl << sockfd << ": command 3 received";
 
                 string path = getenv("HOME");
                 receive_payload(sockfd, &pkt, 0);
                 string filename = pkt._payload;
+				filename.resize(pkt.length);
                 path = path + "/server_sync_dir_" + username + "/" + filename;
                 cout << "String path: " << path;
 
@@ -282,8 +284,8 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 closedir(fileDir);
 
                 send_string(sockfd, return_str);*/
-
-				send_string(sockfd, get_files_and_mtime(user_files, user_files_mutex));
+				string ls = get_files_and_mtime(user_files, user_files_mutex);
+				send_string(sockfd, ls);
 
                 break;
             }
@@ -292,9 +294,9 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 cout << endl << sockfd << ": command 6 received";
 
                 // Send number of files to the client
-                string number_of_files_str = (char *)((*user_files).size());
-                //cout << "\nnumber of files: " << number_of_files_str << endl;
-                send_string(sockfd, number_of_files_str);
+				int number_of_files = (*user_files).size();
+				send_int(sockfd, number_of_files);
+                //cout << "\nnumber of files: " << number_of_files << endl;
 
                 // Send the name of each file and its mtime
 				// Since any thread of the same user could be editing the user_files vector,
@@ -352,6 +354,7 @@ void *Communication_server::receive_commands_helper(void* void_args)
 
 void Communication_server::send_string(int sockfd, string str)
 {
+	cout << "\nsending string: " << str;
     char* buffer = (char*)malloc(packet_size);
     // If the string is too large to send in one go, divide it into separate packets.
     // Get the number of packets necessary (total_size)
@@ -492,7 +495,7 @@ void Communication_server::send_mtime(int sockfd, time_t mtime) {
 	pkt._payload = payload;
 
 	time_t mtime2 = *(time_t*)pkt._payload;
-	std::cout << "\n\nENVIANDO MTIME: " << mtime2 << std::endl << std::endl;
+	//std::cout << "\n\nENVIANDO MTIME: " << mtime2 << std::endl << std::endl;
 
 	// copy pkt to buffer
 	char* buffer = (char*)&pkt;
@@ -507,7 +510,7 @@ void Communication_server::send_mtime(int sockfd, time_t mtime) {
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
-    std::cout << "bytes sent: " << bytes_sent << std::endl;
+    //std::cout << "bytes sent: " << bytes_sent << std::endl;
 
     //send payload
 	// write in the socket
@@ -520,8 +523,8 @@ void Communication_server::send_mtime(int sockfd, time_t mtime) {
 		bytes_sent += n;
     }
 	time_t mtime3 = *(time_t*)pkt._payload;
-	std::cout << "\n\nENVIANDO MTIME: " << mtime3 << std::endl << std::endl;
-    std::cout << "bytes sent: " << bytes_sent << std::endl;
+	//std::cout << "\n\nENVIANDO MTIME: " << mtime3 << std::endl << std::endl;
+    //std::cout << "bytes sent: " << bytes_sent << std::endl;
 }
 
 void Communication_server::send_file(int sockfd, string path)
@@ -905,6 +908,7 @@ void Communication_server::start_writing_file(string path, vector<File_server> *
 	bool file_found=false;
 	for(int i=0; i<user_files->size(); i++)
 	{
+		cout << "\nuser_files[" << i << "]: " << (*user_files)[i].get_path() << " " << (*user_files)[i].get_mtime();
 		if((*user_files)[i].get_path() == path){
 			file_found=true;
 
@@ -945,6 +949,7 @@ void Communication_server::done_writing_file(string path, vector<File_server> *u
 	bool file_found = false;
 	for(int i=0; i<user_files->size(); i++)
 	{
+		cout << "\nuser_files[" << i << "]: " << (*user_files)[i].get_path() << " " << (*user_files)[i].get_mtime();
 		if((*user_files)[i].get_path() == path){
 			file_found = true;
 			File_server *file_buffer = &(*user_files)[i];
@@ -990,26 +995,33 @@ string Communication_server::get_files_and_mtime(vector<File_server> *user_files
 
 	// Go through all the files in the vector
 	stringstream strstream;
-	strstream << "";
+	strstream.str("");
 	for(int i=0; i<user_files->size(); i++)
 	{
-		// Add the file name to the return string
-		string path = (*user_files)[i].get_path();
-		strstream << path.substr(path.find_last_of("\\/")+1, path.length());
+		cout << endl << (*user_files)[i].get_path() << " " << (*user_files)[i].get_mtime();
+		if((*user_files)[i].get_mtime() > 0)
+		{
+			cout << "\nENTREI!\n";
+			// Add the file name to the return string
+			string path = (*user_files)[i].get_path();
+			strstream << path.substr(path.find_last_of("\\/")+1, path.length());
 
-		// Add the mtime to the return string
-		time_t t = (*user_files)[i].get_mtime();
-        struct tm lt;
-        localtime_r(&t, &lt);
-        char timebuf[80];
-        strftime(timebuf, sizeof(timebuf), "%c", &lt);
-		strstream << "(" << timebuf << ") ";
+			// Add the mtime to the return string
+			time_t t = (*user_files)[i].get_mtime();
+	        struct tm lt;
+	        localtime_r(&t, &lt);
+	        char timebuf[80];
+	        strftime(timebuf, sizeof(timebuf), "%c", &lt);
+			strstream << "(" << timebuf << ") ";
+		}
 	}
 	string return_str = strstream.str();
 	if(return_str != "")
 		return_str.pop_back();
 	else
 		return_str = "The folder is empty";
+
+	cout << "\nreturn str: " << return_str;
 
 	// Unlock the mutex for editing the user_files vector
 	pthread_mutex_unlock(user_files_mutex);

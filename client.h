@@ -7,13 +7,11 @@
 class Client {
 private:
     std::string username; // userId
-	std::string hostname;	
-	int port;    
+	std::string hostname;
+	int port;
 	bool isLogged;
     std::string dir;
     int command;
-
-    bool running;
 
     pthread_t check_files_thread;
     //Communication_client communication;
@@ -23,7 +21,7 @@ public:
 		void* obj = NULL;
     };
 
-    struct file{time_t mtime; std::string name;};
+    struct file{time_t mtime; time_t local_mtime; std::string name;};
     std::vector<file> watched_files;
 
     Client(std::string username, std::string hostname, int port);
@@ -31,14 +29,13 @@ public:
     // gets e sets
     void setUsername(std::string username);
     std::string getUsername();
-	std::string getHostname();	
+	std::string getHostname();
 	int getPort();
     void setIsLogged(bool isLogged);
     bool getIsLogged();
     void setDir(std::string dir);
     void setCommand(int command);
     int getCommand();
-    void setRunning(bool running);
     pthread_t* getCheckFilesThread();
     time_t get_mtime(std::string filename);
 

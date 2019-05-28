@@ -124,7 +124,7 @@ void Communication_client::send_command(int command) {
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
-    std::cout << "bytes sent: " << bytes_sent << std::endl;
+    //std::cout << "bytes sent: " << bytes_sent << std::endl;
     //send payload
 	// write in the socket
 	bytes_sent = 0;
@@ -135,7 +135,7 @@ void Communication_client::send_command(int command) {
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
-    std::cout << "bytes sent: " << bytes_sent << std::endl;
+    //std::cout << "bytes sent: " << bytes_sent << std::endl;
 }
 
 void Communication_client::send_filename(std::string filename) {
@@ -147,9 +147,9 @@ void Communication_client::send_filename(std::string filename) {
     pkt.type = 0;
     pkt.seqn = 1;
     pkt.total_size = 1;
-    pkt.length = 9;
+    pkt.length = filename.size();
 	pkt._payload = payload;
-    std::cout << "\n\nfilename: " << pkt._payload << std::endl;
+    std::cout << "\n\n(send_filename) filename: " << pkt._payload << std::endl;
 
 	// copy pkt to buffer
 	buffer = (char*)&pkt;
@@ -164,7 +164,7 @@ void Communication_client::send_filename(std::string filename) {
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
-    std::cout << "bytes sent: " << bytes_sent << std::endl;
+    //std::cout << "bytes sent: " << bytes_sent << std::endl;
 
     //send payload
 	/* write in the socket */
@@ -176,13 +176,13 @@ void Communication_client::send_filename(std::string filename) {
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
-    std::cout << "bytes sent: " << bytes_sent << std::endl;
+    //std::cout << "bytes sent: " << bytes_sent << std::endl;
 }
 
 void Communication_client::send_file(std::string filename, std::string path){
 	char* file_buffer = (char*)malloc(payload_size);
 	std::string complete_path = path + "/" + filename;
-	//std::cout << "PATH COMPLETO SEND_FILE:" << complete_path;
+	std::cout << "\n(send_file) PATH COMPLETO:" << complete_path;
 	FILE *fp = fopen(complete_path.c_str(), "r");
 
 	if(fp == NULL)
@@ -203,7 +203,7 @@ void Communication_client::send_file(std::string filename, std::string path){
     int total_size = total_size_f;
     if (total_size_f > total_size)
         total_size ++;
-    std::cout << "\n\ntotal size: " << total_size;
+    //std::cout << "\n\ntotal size: " << total_size;
 
     int i;
     int total_bytes_sent = 0;
@@ -227,8 +227,8 @@ void Communication_client::send_file(std::string filename, std::string path){
         else
             pkt.length = payload_size;
 
-        std::cout << std::endl << total_bytes_sent << " bytes have been sent";
-        std::cout << std::endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
+        //std::cout << std::endl << total_bytes_sent << " bytes have been sent";
+        //std::cout << std::endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
 
         // Read pkt.length bytes from the file
         fread(file_buffer, 1, pkt.length, fp);
@@ -251,12 +251,12 @@ void Communication_client::send_file(std::string filename, std::string path){
 	        bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
-        std::cout << "\n\nHEADER!\n";
+        /*std::cout << "\n\nHEADER!\n";
         std::cout << "bytes sent: " << bytes_sent << std::endl;
         std::cout << "type: " << pkt.type;
         std::cout << "\nseqn: " << pkt.seqn;
         std::cout << "\ntotal_size: " << pkt.total_size;
-        std::cout << "\npayload_size: " << pkt.length << std::endl;
+        std::cout << "\npayload_size: " << pkt.length << std::endl;*/
 
         //------------------------------------------------------------------------
         // SEND PAYLOAD
@@ -271,10 +271,10 @@ void Communication_client::send_file(std::string filename, std::string path){
 	        bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
-        std::cout << "PACKET!\n";
+        /*std::cout << "PACKET!\n";
         std::cout << "\npayload(char*): ";
         printf("%.*s\n", payload_size, pkt._payload);
-        std::cout << "bytes sent: " << bytes_sent << std::endl;
+        std::cout << "bytes sent: " << bytes_sent << std::endl;*/
     }
 	free(file_buffer);
 	fclose(fp);
@@ -292,7 +292,7 @@ void Communication_client::send_mtime(time_t mtime) {
     pkt.total_size = 1;
     pkt.length = sizeof(time_t);
 	pkt._payload = payload;
-    std::cout << "\n\nfilename: " << pkt._payload << std::endl;
+    //std::cout << "\n\nfilename: " << pkt._payload << std::endl;
 
 	// copy pkt to buffer
 	buffer = (char*)&pkt;
@@ -307,7 +307,7 @@ void Communication_client::send_mtime(time_t mtime) {
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
-    std::cout << "bytes sent: " << bytes_sent << std::endl;
+    //std::cout << "bytes sent: " << bytes_sent << std::endl;
 
     //send payload
 	// write in the socket
@@ -319,7 +319,7 @@ void Communication_client::send_mtime(time_t mtime) {
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
-    std::cout << "bytes sent: " << bytes_sent << std::endl;
+    //std::cout << "bytes sent: " << bytes_sent << std::endl;
 }
 
 // The type variable defines the type of output:
@@ -344,8 +344,8 @@ long int Communication_client::receive_payload(struct packet *pkt, int type) {
 
         bytes_received+=n;
         //std::cout << "\nEstou no while do receive_payload";
-		std::cout << "\nbytes lidos: " << bytes_received << std::endl;
-        std::cout << "\npkt lenght: " << pkt->length;
+		//std::cout << "\nbytes lidos: " << bytes_received << std::endl;
+        //std::cout << "\npkt lenght: " << pkt->length;
 	}
     //std::cout << "\nbytes lidos: " << bytes_received;
 	pkt->_payload = (const char*)buffer;
@@ -385,8 +385,8 @@ void Communication_client::receive_header(struct packet *_header) {
         }
 
         bytes_received+=n;
-		std::cout << "\nbytes lidos: " << bytes_received;
-        std::cout << "\nheader size: " << header_size;
+		//std::cout << "\nbytes lidos: " << bytes_received;
+        //std::cout << "\nheader size: " << header_size;
 	}
 	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
 	{
@@ -398,12 +398,12 @@ void Communication_client::receive_header(struct packet *_header) {
 	    memcpy(&_header->seqn, &buffer[2], 2);
 	    memcpy(&_header->total_size, &buffer[4], 4);
 	    memcpy(&_header->length, &buffer[8], 2);
-	    std::cout << "\ntype: " << _header->type;
+	    /*std::cout << "\ntype: " << _header->type;
 	    std::cout << "\nseqn: " << _header->seqn;
 	    std::cout << "\ntotal_size: " << _header->total_size;
-	    std::cout << "\npayload_size: " << _header->length << std::endl;
+	    std::cout << "\npayload_size: " << _header->length << std::endl;*/
     }
-    std::cout << "\nSaindo do receive_header\n";
+    //std::cout << "\nSaindo do receive_header\n";
 /*
     std::cout << "\nSai do while do receive_header";
     // Bytes from buffer[4] to buffer[7] are the size of _payload
@@ -434,8 +434,8 @@ void Communication_client::receive_file(std::string path) {
     struct packet pkt;
     receive_payload(&pkt, 0);
     uint32_t total_size = pkt.total_size;
-    std::cout << "pkt total size: " << pkt.total_size;
-    std::cout << "\n\nTHE CLIENT WILL RECEIVE " << total_size << " PACKETS!\n";
+    //std::cout << "pkt total size: " << pkt.total_size;
+    //std::cout << "\n\nTHE CLIENT WILL RECEIVE " << total_size << " PACKETS!\n";
 
     // Write the first payload to the file
     ssize_t bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
@@ -450,14 +450,14 @@ void Communication_client::receive_file(std::string path) {
     int i;
     for(i=2; i<=total_size; i++)
     {
-        std::cout << "\ni: " << i << "/" << total_size;
+        //std::cout << "\ni: " << i << "/" << total_size;
         // Receive payload
         receive_payload(&pkt, 0);
         // Write it to the file
         bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
         if (bytes_written_to_file < pkt.length)
             std::cout << "\nERROR WRITING TO " << path << std::endl;
-        std::cout << "\n" << bytes_written_to_file << " bytes written to file\n";
+        //std::cout << "\n" << bytes_written_to_file << " bytes written to file\n";
     }
     fclose(fp);
 }
@@ -484,7 +484,6 @@ int Communication_client::delete_file(std::string path) {
 
 
 void Communication_client::upload_command(int command, std::string filename, std::string path, time_t mtime) {
-
 	//send command upload (1)
 	send_command(command);
 
@@ -505,7 +504,7 @@ void Communication_client::upload_command(int command, std::string filename, std
 	send_file(filename, path);
 }
 
-Client::file Communication_client::download_command(int command, std::string filename, std::string path, Client::file download_file) {
+void Communication_client::download_command(int command, std::string filename, std::string path, Client::file *download_file) {
 	//std::cout << "\nENTREI NA DOWNLOAD_COMMAND";
     //std::cout << "\nfilename recebido: " << filename;
     //std::cout << "\npath recebido: " << path;
@@ -526,26 +525,26 @@ Client::file Communication_client::download_command(int command, std::string fil
 
     if(receive_int() < 0){
         // se entrar aqui é porque o file não existe no server, logo não tem o que ser baixado
-        std::cout << "\nFile doesn't exists at server.\n";
-        download_file.mtime = -1;
-        return download_file;
+        std::cout << "\nFile doesn't exist at server.\n";
+        download_file->mtime = -1;
     }
+	else{
+	    //std::cout << "\nNão devia mas veio mesmo assim ué";
+		// receive mtime
+	    struct packet pkt;
+		time_t mtime = receive_payload(&pkt, 2);
 
-    std::cout << "\nNão devia mas veio mesmo assim ué";
-	// receive mtime
-    struct packet pkt;
-	time_t mtime = receive_payload(&pkt, 2);
-    std::cout << "\nmtime: " << mtime << std::endl;
-    std::cout << "\nmtime recebido: " << mtime;
+		// receive file
+		receive_file(path);
 
-	download_file.name = filename;
-	download_file.mtime = mtime;
+		download_file->name = filename;
+		download_file->mtime = mtime;
 
-	// receive file
-	receive_file(path);
-
-	return download_file;
-
+		struct stat fileattrib;
+		if(stat(path.c_str(), &fileattrib) < 0)
+			std::cout << "\nstat error\n";
+		download_file->local_mtime = fileattrib.st_mtime;
+	}
 }
 
 void Communication_client::delete_command(int command, std::string filename, std::string path) {
@@ -580,8 +579,8 @@ void Communication_client::list_server_command(int command) {
 }
 
 
-std::vector<Client::file> Communication_client::get_sync_dir(int command, std::vector<Client::file> watched_files, std::string path, Client::file auxfile, Client::file download_file) {
-    int found = 0;
+void Communication_client::get_sync_dir(int command, std::vector<Client::file> *watched_files, std::string path) {
+	Client::file download_file;
 
     send_command(command);
 
@@ -593,61 +592,99 @@ std::vector<Client::file> Communication_client::get_sync_dir(int command, std::v
 
     //recebe o numero de arquivos do server
     packet pkt;
-    int num_server_files = receive_payload(&pkt, 1);
+	int num_server_files = receive_payload(&pkt, 1);
+
+	std::cout << "\nFILES ON SERVER (contando os que foram deletados): " << num_server_files << "\n\n";
 
     //recebe o filename e o mtime de cada arquivo
     for(int i = 1; i <= num_server_files; i++) {
-        
+
         // recebe o filename
         receive_payload(&pkt, 0);
         std::string server_filename = pkt._payload;
+		server_filename.resize(pkt.length);
+		std::string complete_path = path + '/' + server_filename;
 
         // recebe o mtime
         time_t server_mtime = receive_payload(&pkt, 2);
 
-        int watched_files_size = watched_files.size();
+		std::cout << "\nserver filename: \'" << server_filename << "\'" << std::endl << "server mtime: " << server_mtime << std::endl;
+
+        int watched_files_size = watched_files->size();
+	    int found = 0;
+		int pos = 0;
         // percorre a watched_files pra achar as inconsistências entra os arquivos no servidor e no client
-        for(int j = 0; j < watched_files_size; j++){
+		for(int j = 0; j < watched_files_size && !found; j++){
             // se acha o arquivo da server na watched_files
-            if(watched_files[j].name == server_filename) {
-                // achou
-                found = 1;
-                if(server_mtime < 0){
-                    // se o arquivo foi deletado no servidor, vai ser deletado no cliente
-                    std::string complete_path = path + '/' + server_filename;
-                    delete_file(complete_path);
-                    watched_files = remove_from_watched_files(server_filename, watched_files);
-                } else {
-                    double seconds = difftime(server_mtime, watched_files[j].mtime);
-                    if(seconds > 0) {
-                        auxfile;
-                        download_file = download_command(2, server_filename, path, auxfile);
-                        watched_files.push_back(download_file);
-                    }
-                    if (seconds < 0) {
-                        upload_command(1, server_filename, path, server_mtime);
-                    }
-                }
-            } else {
-                // found = 0
-                auxfile;
-                download_file = download_command(2, server_filename, path, auxfile);
-                watched_files.push_back(download_file);
-            }
-            found = 0;
+			//std::cout << "i: " << i << "\ncomparando com: filename: \'" << (*watched_files)[j].name << "\'" << std::endl << "mtime: " << (*watched_files)[j].mtime << std::endl;
+            if((*watched_files)[j].name == server_filename){
+				//std::cout << "\nACHOU FILENAME!\n";
+				found = 1;
+				pos = j;
+				break;
+			}
+		}
+		if(found){
+			// found = 1
+	        if(server_mtime < 0){
+	            // se o arquivo foi deletado no servidor, vai ser deletado no cliente
+				std::cout << "\n(get_sync_dir) file " << complete_path << "will be deleted\n";
+	            delete_file(complete_path);
+				(*watched_files)[pos].mtime = -2; // sinaliza que deve ser removido
+	            //remove_from_watched_files(server_filename, watched_files);
+			  // Se mtime é -1, o arquivo deve ser deletado no servidor
+	        } else if((*watched_files)[pos].mtime != -1) {
+	            double seconds = difftime(server_mtime, (*watched_files)[pos].mtime);
+	            if(seconds > 0) { // Se a versão do server é mais nova
+					std::cout << "\n(get_sync_dir) file " << complete_path << " will be downloaded (server version is more recent)\n";
+					download_command(2, server_filename, path, &download_file);
+	                watched_files->push_back(download_file);
+	            }
+	            if (seconds < 0) { // Se a versão do client é mais nova
+					std::cout << "\n(get_sync_dir) file " << complete_path << " will be uploaded (client version is more recent)\n";
+	                upload_command(1, server_filename, path, (*watched_files)[pos].mtime);
+	            }
+	        } else { // Se mtime do client é -1
+				std::cout << "\n(get_sync_dir) file " << complete_path << " will be deleted on the server)\n";
+				delete_command(3, server_filename, path);
+				(*watched_files)[pos].mtime = -2; // sinaliza que deve ser removido
+	            //remove_from_watched_files(server_filename, watched_files);
+			}
+	    }
+		else if (server_mtime != -1){
+            // found = 0
+			std::cout << "\n(get_sync_dir) file " << complete_path << " will be downloaded (client doesn't have file)\n";
+            download_command(3, server_filename, path, &download_file);
+            watched_files->push_back(download_file);
         }
     }
-    return watched_files;
+
+	// Percorre todos os watched_files
+	for(int i=0; i<watched_files->size(); i++){
+		// Se o arquivo é novo
+		if((*watched_files)[i].mtime==0){
+			(*watched_files)[i].mtime = (*watched_files)[i].local_mtime;
+			std::string complete_path = path + '/' + (*watched_files)[i].name;
+			// Envia
+			std::cout << "\n(get_sync_dir) file " << complete_path << " will be uploaded (server doesn't have file)\n";
+			upload_command(1, (*watched_files)[i].name, path, (*watched_files)[i].mtime);
+		}
+		// Se o arquivo deve ser removido
+		else if((*watched_files)[i].mtime == -2){
+			// Remove
+			watched_files->erase(watched_files->begin()+i);
+			i--;
+		}
+	}
 }
 
-std::vector<Client::file> Communication_client::remove_from_watched_files(std::string filename, std::vector<Client::file> watched_files) {
-    for(int i=0; i < watched_files.size(); i++)
+void Communication_client::remove_from_watched_files(std::string filename, std::vector<Client::file> *watched_files) {
+    for(int i=0; i < watched_files->size(); i++)
     {
-        if(filename == watched_files[i].name)
+        if(filename == (*watched_files)[i].name)
             //std::cout << "\n\nwatched_file: "<< watched_files[i].name << "\tfilename: " << filename;
-            watched_files.erase(watched_files.begin()+i);  
+            watched_files->erase(watched_files->begin()+i);
     }
-    return watched_files;
 }
 
 void Communication_client::exit_command(int command) {

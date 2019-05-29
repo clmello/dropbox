@@ -18,7 +18,7 @@ void Communication_server::Init(int port, int header_size, int max_payload)
 void Communication_server::receive_header(int sockfd, struct packet *header)
 {
 	char *buffer = (char*)malloc(header_size);
-    cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_HEADER\n\n";
+    //cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_HEADER\n\n";
 	int bytes_received=0;
 	//cout << "\n\nbytes lidos: "<<bytes_received;
     while(bytes_received < header_size)
@@ -45,10 +45,10 @@ void Communication_server::receive_header(int sockfd, struct packet *header)
 	    memcpy(&header->seqn, &buffer[2], 2);
 	    memcpy(&header->total_size, &buffer[4], 4);
 	    memcpy(&header->length, &buffer[8], 2);
-	    cout << "\n" << sockfd << ": type: " << header->type;
-	    cout << "\n" << sockfd << ": seqn: " << header->seqn;
-	    cout << "\n" << sockfd << ": total_size: " << header->total_size;
-	    cout << "\n" << sockfd << ": payload_size: " << header->length << endl;
+	    //cout << "\n" << sockfd << ": type: " << header->type;
+	    //cout << "\n" << sockfd << ": seqn: " << header->seqn;
+	    //cout << "\n" << sockfd << ": total_size: " << header->total_size;
+	    //cout << "\n" << sockfd << ": payload_size: " << header->length << endl;
     }
     free(buffer);
 }
@@ -66,14 +66,14 @@ long int Communication_server::receive_payload(int sockfd, struct packet *pkt, i
     while(bytes_received < pkt->length)
     {
         // read from the socket
-        int n = read(sockfd, buffer, pkt->length-bytes_received);
+        int n = read(sockfd, &buffer[bytes_received], pkt->length-bytes_received);
         if (n < 0)
             printf("ERROR reading from socket");
 
         bytes_received+=n;
 		//cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received<<endl;
 	}
-	cout << "\n" << sockfd << ": bytes lidos na _payload: "<<bytes_received;
+	//cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
 	pkt->_payload = (const char*)buffer;
 	switch (type)
 	{
@@ -109,14 +109,15 @@ long int Communication_server::receive_payload(int sockfd, struct packet *pkt, i
 	return 0;*/
 }
 
-void *Communication_server::receive_commands(int sockfd, string username, int *thread_finished)//, vector<Connected_client> *connected_clients)
+void *Communication_server::receive_commands(int sockfd, string username, int *thread_finished, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)//, vector<Connected_client> *connected_clients)
 {
     bool close_thread = false;
-	//bool file_not_found = false;
-	printf("\n\nENDERECO DO USER_FILES: %p\n\n", &user_files);
+	printf("\n\nENDERECO DO USER_FILES: %p\n\n", user_files);
     while(!close_thread) // TODO: ENQUANTO USUARIO NÃO FECHA
     {
-		//cout << "\n\nSIZE OF USER FILES: " << user_files.size() << endl;
+		vector<File_server> user_files_ = *user_files;
+		cout << "\n\nSIZE OF USER FILES: " << user_files->size() << endl;
+		cout << "SIZE OF USER FILES_: " << user_files_.size() << endl;
         // Wait for a command
         cout << endl << sockfd << ": waiting for command";
         struct packet pkt;
@@ -165,14 +166,14 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 //update_watched_file(filename, mtime);
 
 				// This function locks the file mutex as a writer
-				start_writing_file(path, mtime);
+				start_writing_file(path, user_files, user_files_mutex, mtime);
 
                 // Receive the file
                 receive_file(sockfd, path);
 
 				//TODO: Libera escrita no arquivo
 				// This function unlocks the mutex as a writer
-				done_writing_file(path);
+				done_writing_file(path, user_files, user_files_mutex);
 
                 break;
             }
@@ -192,7 +193,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 
 				//TODO: Pede para ler arquivo (mutex)
 				// This function locks the file mutex as a reader
-				int return_value = start_reading_file(path);
+				int return_value = start_reading_file(path, user_files, user_files_mutex);
 
 				// If the file doesn't exist, don't try to read it and tell the client that it doesn't exist
 				// Send 1 if OK, send -1 if file doesn't exist
@@ -205,7 +206,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 					send_int(sockfd, 1);
 
                 //Send mtime
-                time_t mtime = get_mtime(filename, username);
+                time_t mtime = get_mtime(filename, username, user_files, user_files_mutex);
 				//cout << endl << endl << "SENDING MTIME: " << mtime << endl << endl;
                 send_mtime(sockfd, mtime);
 
@@ -214,7 +215,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 
 				//TODO: libera leitura do arquivo
 				// This functions unlocks the mutex as a reader
-				done_reading_file(path);
+				done_reading_file(path, user_files, user_files_mutex);
 
                 break;
             }
@@ -227,16 +228,16 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 string filename = pkt._payload;
 				filename.resize(pkt.length);
                 path = path + "/server_sync_dir_" + username + "/" + filename;
-                //cout << "String path: " << path;
+                cout << "String path: " << path;
 
 				//TODO: pede para escrever no arquivo
 				// This function locks the file mutex as a writer
-				start_writing_file(path, 0);
+				start_writing_file(path, user_files, user_files_mutex, 0);
 
 				// If the file doesn't exist, there is no need to delete it
-				if(!file_exists(path)){
+				if(!file_exists(path, user_files, user_files_mutex)){
 					// This function unlocks the mutex as a writer
-					done_writing_file(path);
+					done_writing_file(path, user_files, user_files_mutex);
 					break;
 				}
 
@@ -248,9 +249,9 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 				//Quando um outro client pedir get_sync_dir, vai ver que é -1 e saber que precisa
 				//deletar o arquivo
 				// Remove file from the user_files vector
-				remove_file(path);
+				remove_file(path, user_files, user_files_mutex);
 				// This function unlocks the mutex as a writer
-				done_writing_file(path);
+				done_writing_file(path, user_files, user_files_mutex);
 
                 break;
             }
@@ -264,14 +265,11 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 				// Therefore, it is possible that the user will receive the name of a file that has been deleted while
 				//listing. A subsequent list_server command would not list the file, so we have decided tha it would
 				//not be a problem.
-
                 string path = getenv("HOME");
                 path = path + "/server_sync_dir_" + username;
                 DIR *fileDir;
                 struct dirent *lsdir;
-
                 fileDir = opendir(path.c_str());
-
                 string return_str = "";
                 while ((lsdir = readdir(fileDir)) != NULL)
                 {
@@ -282,11 +280,9 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                     return_str.pop_back();
                 else
                     return_str = "The folder is empty";
-
                 closedir(fileDir);
-
                 send_string(sockfd, return_str);*/
-				string ls = get_files_and_mtime();
+				string ls = get_files_and_mtime(user_files, user_files_mutex);
 				send_string(sockfd, ls);
 
                 break;
@@ -294,31 +290,31 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
             case 6: // Get sync_dir
             {
                 cout << endl << sockfd << ": command 6 received";
-				// Since any thread of the same user could be editing the user_files vector,
-				//we need mutual exclusion
-				pthread_mutex_lock(&user_files_mutex);
 
                 // Send number of files to the client
-				int number_of_files = user_files.size();
+				int number_of_files = (*user_files).size();
 				send_int(sockfd, number_of_files);
                 //cout << "\nnumber of files: " << number_of_files << endl;
 
                 // Send the name of each file and its mtime
+				// Since any thread of the same user could be editing the user_files vector,
+				//we need mutual exclusion
+				pthread_mutex_lock(user_files_mutex);
 
 				// Go through all the files and send the name of each file and its mtime
-				for(int i=0; i<user_files.size(); i++)
+				for(int i=0; i<user_files->size(); i++)
 				{
 					// Send filename
-					string path = user_files[i].get_path();
+					string path = (*user_files)[i].get_path();
 					send_string(sockfd, path.substr(path.find_last_of("\\/")+1, path.length()));
 
 					// Send mtime
-					time_t mtime = user_files[i].get_mtime();
+					time_t mtime = (*user_files)[i].get_mtime();
 					send_mtime(sockfd, mtime);
 				}
 
 				// Unlock the mutex for editing the user_files vector
-				pthread_mutex_unlock(&user_files_mutex);
+				pthread_mutex_unlock(user_files_mutex);
 
 				//TODO: receive files from the client, if they are more recent
 				// Na real não precisa. Só manda os mtimes pro cliente. Ele decide
@@ -350,8 +346,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 void *Communication_server::receive_commands_helper(void* void_args)
 {
     th_args* args = (th_args*)void_args;
-    ((Communication_server*)args->obj)->receive_commands(*args->newsockfd, *args->username, args->thread_finished);
-	//TODO: TIRAR VECTOR E MUTEX DO ARGS
+    ((Communication_server*)args->obj)->receive_commands(*args->newsockfd, *args->username, args->thread_finished, args->user_files, args->user_files_mutex);
     return 0;
 }
 
@@ -580,17 +575,17 @@ void Communication_server::send_file(int sockfd, string path)
         else
             pkt.length = max_payload;
 
-        cout << endl << total_bytes_sent << " bytes have been sent";
-        cout << endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
+        //cout << endl << total_bytes_sent << " bytes have been sent";
+        //cout << endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
 
         // Read pkt.length bytes from the file
         size_t bytes_read = fread(file_buffer, 1, pkt.length, fp);
         if(bytes_read != pkt.length)
             cout << "\nError reading from file \"" << path << "\"";
 
-        cout << "\nbytes read from file: " << bytes_read;
-        //cout << "\nConteudo lido: ";
-	    //printf("%.*s\n", max_payload, file_buffer);
+        cout << "\nbytes read: " << bytes_read;
+        cout << "\nConteudo lido: ";
+	    printf("%.*s\n", max_payload, file_buffer);
         // Save it to pkt._payload
         pkt._payload = file_buffer;
 
@@ -610,12 +605,12 @@ void Communication_server::send_file(int sockfd, string path)
 	        bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
-        cout << "\n\nHEADER!\n";
-        cout << "bytes sent: " << bytes_sent << endl;
-        cout << "type: " << pkt.type;
-        cout << "\nseqn: " << pkt.seqn;
-        cout << "\ntotal_size: " << pkt.total_size;
-        cout << "\npayload_size: " << pkt.length << endl;
+        //cout << "\n\nHEADER!\n";
+        //cout << "bytes sent: " << bytes_sent << endl;
+        //cout << "type: " << pkt.type;
+        //cout << "\nseqn: " << pkt.seqn;
+        //cout << "\ntotal_size: " << pkt.total_size;
+        //cout << "\npayload_size: " << pkt.length << endl;
 
         //------------------------------------------------------------------------
         // SEND PAYLOAD
@@ -631,8 +626,8 @@ void Communication_server::send_file(int sockfd, string path)
         }
         total_bytes_sent += bytes_sent;
         cout << "PACKET!\n";
-        //cout << "\npayload(char*): ";
-        //printf("%.*s\n", max_payload, pkt._payload);
+        cout << "\npayload(char*): ";
+        printf("%.*s\n", max_payload, pkt._payload);
         cout << "bytes sent: " << bytes_sent << endl;
         //------------------------------------------------------------------------
     }
@@ -652,7 +647,7 @@ void Communication_server::receive_file(int sockfd, string path)
     struct packet pkt;
     receive_payload(sockfd, &pkt, 0);
     uint32_t total_size = pkt.total_size;
-    cout << "\n\nTHE SERVER WILL RECEIVE " << total_size << " PACKETS!\n";
+    //cout << "\n\nTHE SERVER WILL RECEIVE " << total_size << " PACKETS!\n";
     // Write the first payload to the file
     ssize_t bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
     if (bytes_written_to_file < pkt.length)
@@ -671,7 +666,7 @@ void Communication_server::receive_file(int sockfd, string path)
         bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
         if (bytes_written_to_file < pkt.length)
             cout << "\nERROR WRITING TO " << path << endl;
-        cout << "\n" << bytes_written_to_file << " bytes written to file\n";
+        //cout << "\n" << bytes_written_to_file << " bytes written to file\n";
     }
     fclose(fp);
 }
@@ -737,14 +732,12 @@ bool Communication_server::file_is_watched(string filename)
     }
     return file_found;
 }
-
 void Communication_server::update_watched_file(string filename, time_t mtime)
 {
     if(!file_is_watched(filename)){
         struct file new_file;
         new_file.name = filename;
         new_file.mtime = mtime;
-
         watched_files.push_back(new_file);
     }
     else{
@@ -759,7 +752,6 @@ void Communication_server::update_watched_file(string filename, time_t mtime)
         }
     }
 }
-
 time_t Communication_server::get_mtime(string filename)
 {
     for(int i=0; i < watched_files.size(); i++)
@@ -769,7 +761,6 @@ time_t Communication_server::get_mtime(string filename)
     }
     return -1;
 }
-
 void Communication_server::remove_watched_file(string filename)
 {
     for(int i=0; i < watched_files.size(); i++)
@@ -778,7 +769,6 @@ void Communication_server::remove_watched_file(string filename)
             watched_files.erase(watched_files.begin()+i);
     }
 }/*
-
 // ACHO QUE NÂO PRECISA DESSA FUNÇÃO!!!
 /*
 pthread_mutex_t *Communication_server::get_file_mutex(vector<File_server> *user_files, string path, pthread_mutex_t *user_files_mutex)
@@ -793,74 +783,72 @@ pthread_mutex_t *Communication_server::get_file_mutex(vector<File_server> *user_
 			// Unlock the mutex for editing the user_files vector
 			//pthread_mutex_unlock(user_files_mutex);
 			//TODO: pra que fazer isso? ^
-
 			// Return the mutex address
 			return (*user_files)[i].get_mutex();
 		}
 	}
 	// Unlock the mutex for editing the user_files vector
 	pthread_mutex_unlock(user_files_mutex);
-
 	// If there is no file with this path, return NULL
 	return NULL;
 }*/
 
-bool Communication_server::file_exists(string path)
+bool Communication_server::file_exists(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)
 {
 	// Since any thread of the same user could be editing the user_files vector,
 	//we need mutual exclusion
-	pthread_mutex_lock(&user_files_mutex);
+	pthread_mutex_lock(user_files_mutex);
 
 	// Look for the file with this path
-	for(int i=0; i<user_files.size(); i++)
+	for(int i=0; i<user_files->size(); i++)
 	{
-		if(user_files[i].get_path() == path){
+		if((*user_files)[i].get_path() == path){
 			// Unlock the mutex for editing the user_files vector
-			pthread_mutex_unlock(&user_files_mutex);
+			pthread_mutex_unlock(user_files_mutex);
 			return true;
 		}
 	}
 
 	// Unlock the mutex for editing the user_files vector
-	pthread_mutex_unlock(&user_files_mutex);
+	pthread_mutex_unlock(user_files_mutex);
 
 	return false;
 }
 
-void Communication_server::update_user_file(string path, time_t mtime)
+void Communication_server::update_user_file(string path, time_t mtime, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)
 {
 	// Since any thread of the same user could be editing the user_files vector,
 	//we need mutual exclusion
-	pthread_mutex_lock(&user_files_mutex);
+	pthread_mutex_lock(user_files_mutex);
 
 	// Look for the file with this path
-	for(int i=0; i<user_files.size(); i++)
+	for(int i=0; i<user_files->size(); i++)
 	{
-		if(user_files[i].get_path() == path)
-			user_files[i].set_mtime(mtime);
+		if((*user_files)[i].get_path() == path)
+			(*user_files)[i].set_mtime(mtime);
 	}
 
 	// Unlock the mutex for editing the user_files vector
-	pthread_mutex_unlock(&user_files_mutex);
+	pthread_mutex_unlock(user_files_mutex);
 }
 
 // This functions locks the file mutex and updates the file mtime
 // It returns 1 if OK, -1 if file doesn't exist
-int Communication_server::start_reading_file(string path)
+int Communication_server::start_reading_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)
 {
 	// Since any thread of the same user could be editing the user_files vector,
 	//we need mutual exclusion
-	pthread_mutex_lock(&user_files_mutex);
+	pthread_mutex_lock(user_files_mutex);
 
 	// Look for the file with this path
 	bool file_found=false;
-	for(int i=0; i<user_files.size(); i++)
+	for(int i=0; i<user_files->size(); i++)
 	{
-		if(user_files[i].get_path() == path){
+		if((*user_files)[i].get_path() == path){
 			file_found=true;
-			File_server *file_buffer = &user_files[i];
+			File_server *file_buffer = &(*user_files)[i];
 			// Unlock the mutex for editing the user_files vector
-			pthread_mutex_unlock(&user_files_mutex);
+			pthread_mutex_unlock(user_files_mutex);
 
 			// This function will lock the file mutex
 			file_buffer->start_reading();
@@ -870,26 +858,26 @@ int Communication_server::start_reading_file(string path)
 
 	// Unlock the mutex for editing the user_files vector
 	if(!file_found){
-		pthread_mutex_unlock(&user_files_mutex);
+		pthread_mutex_unlock(user_files_mutex);
 		return -1;
 	}
 }
 
-void Communication_server::done_reading_file(string path)
+void Communication_server::done_reading_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)
 {
 	// Since any thread of the same user could be editing the user_files vector,
 	//we need mutual exclusion
-	pthread_mutex_lock(&user_files_mutex);
+	pthread_mutex_lock(user_files_mutex);
 
 	// Look for the file with this path
 	bool file_found = false;
-	for(int i=0; i<user_files.size(); i++)
+	for(int i=0; i<user_files->size(); i++)
 	{
-		if(user_files[i].get_path() == path){
+		if((*user_files)[i].get_path() == path){
 			file_found = true;
-			File_server *file_buffer = &user_files[i];
+			File_server *file_buffer = &(*user_files)[i];
 			// Unlock the mutex for editing the user_files vector
-			pthread_mutex_unlock(&user_files_mutex);
+			pthread_mutex_unlock(user_files_mutex);
 
 			// This function will unlock the file mutex
 			file_buffer->done_reading();
@@ -898,28 +886,28 @@ void Communication_server::done_reading_file(string path)
 
 	// Unlock the mutex for editing the user_files vector
 	if(!file_found)
-		pthread_mutex_unlock(&user_files_mutex);
+		pthread_mutex_unlock(user_files_mutex);
 }
 
-void Communication_server::start_writing_file(string path, time_t mtime)
+void Communication_server::start_writing_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex, time_t mtime)
 {
 	// Since any thread of the same user could be editing the user_files vector,
 	//we need mutual exclusion
-	pthread_mutex_lock(&user_files_mutex);
+	pthread_mutex_lock(user_files_mutex);
 
 	// Look for the file with this path
 	bool file_found=false;
-	for(int i=0; i<user_files.size(); i++)
+	for(int i=0; i<user_files->size(); i++)
 	{
-		if(user_files[i].get_path() == path){
+		if((*user_files)[i].get_path() == path){
 			file_found=true;
 
 			// Update mtime
-			user_files[i].set_mtime(mtime);
+			(*user_files)[i].set_mtime(mtime);
 
-			File_server *file_buffer = &user_files[i];
+			File_server *file_buffer = &(*user_files)[i];
 			// Unlock the mutex for editing the user_files vector
-			pthread_mutex_unlock(&user_files_mutex);
+			pthread_mutex_unlock(user_files_mutex);
 
 			// This function will lock the file mutex
 			file_buffer->start_writing();
@@ -930,32 +918,32 @@ void Communication_server::start_writing_file(string path, time_t mtime)
 	if(!file_found)
 	{
 		// Create the new File_server object and add the new file to the user_files vector
-		user_files.emplace_back(path, mtime);
+		(*user_files).emplace_back(path, mtime);
 
-		File_server *file_buffer = &user_files.back();
+		File_server *file_buffer = &(*user_files).back();
 		// Unlock the mutex for editing the user_files vector
-		pthread_mutex_unlock(&user_files_mutex);
+		pthread_mutex_unlock(user_files_mutex);
 
 		// This function will lock the file mutex
 		file_buffer->start_writing();
 	}
 }
 
-void Communication_server::done_writing_file(string path)
+void Communication_server::done_writing_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)
 {
 	// Since any thread of the same user could be editing the user_files vector,
 	//we need mutual exclusion
-	pthread_mutex_lock(&user_files_mutex);
+	pthread_mutex_lock(user_files_mutex);
 
 	// Look for the file with this path
 	bool file_found = false;
-	for(int i=0; i<user_files.size(); i++)
+	for(int i=0; i<user_files->size(); i++)
 	{
-		if(user_files[i].get_path() == path){
+		if((*user_files)[i].get_path() == path){
 			file_found = true;
-			File_server *file_buffer = &user_files[i];
+			File_server *file_buffer = &(*user_files)[i];
 			// Unlock the mutex for editing the user_files vector
-			pthread_mutex_unlock(&user_files_mutex);
+			pthread_mutex_unlock(user_files_mutex);
 
 			// This function will unlock the file mutex
 			file_buffer->done_writing();
@@ -964,51 +952,51 @@ void Communication_server::done_writing_file(string path)
 
 	// Unlock the mutex for editing the user_files vector
 	if(!file_found)
-		pthread_mutex_unlock(&user_files_mutex);
+		pthread_mutex_unlock(user_files_mutex);
 }
 
-void Communication_server::remove_file(string path)
+void Communication_server::remove_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)
 {
 	// Since any thread of the same user could be editing the user_files vector,
 	//we need mutual exclusion
-	pthread_mutex_lock(&user_files_mutex);
+	pthread_mutex_lock(user_files_mutex);
 
 	// Look for the file with this path
-	for(int i=0; i<user_files.size(); i++)
+	for(int i=0; i<user_files->size(); i++)
 	{
-		if(user_files[i].get_path() == path){
+		if((*user_files)[i].get_path() == path){
 			// Remove the File_server object from the vector
 			//(*user_files).erase((*user_files).begin()+i);
 			// Set mtime to -1
-			user_files[i].set_mtime(-1);
+			(*user_files)[i].set_mtime(-1);
 		}
 	}
 
 	// Unlock the mutex for editing the user_files vector
-	pthread_mutex_unlock(&user_files_mutex);
+	pthread_mutex_unlock(user_files_mutex);
 }
 
-string Communication_server::get_files_and_mtime()
+string Communication_server::get_files_and_mtime(vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)
 {
 	// Since any thread of the same user could be editing the user_files vector,
 	//we need mutual exclusion
-	pthread_mutex_lock(&user_files_mutex);
+	pthread_mutex_lock(user_files_mutex);
 
 	// Go through all the files in the vector
 	stringstream strstream;
 	strstream.str("");
-	for(int i=0; i<user_files.size(); i++)
+	for(int i=0; i<user_files->size(); i++)
 	{
 		//cout << endl << (*user_files)[i].get_path() << " " << (*user_files)[i].get_mtime();
-		if(user_files[i].get_mtime() > 0)
+		if((*user_files)[i].get_mtime() > 0)
 		{
 			//cout << "\nENTREI!\n";
 			// Add the file name to the return string
-			string path = user_files[i].get_path();
+			string path = (*user_files)[i].get_path();
 			strstream << path.substr(path.find_last_of("\\/")+1, path.length());
 
 			// Add the mtime to the return string
-			time_t t = user_files[i].get_mtime();
+			time_t t = (*user_files)[i].get_mtime();
 	        struct tm lt;
 	        localtime_r(&t, &lt);
 	        char timebuf[80];
@@ -1022,35 +1010,35 @@ string Communication_server::get_files_and_mtime()
 	else
 		return_str = "The folder is empty";
 
-	//cout << "\nreturn str: " << return_str;
+	cout << "\nreturn str: " << return_str;
 
 	// Unlock the mutex for editing the user_files vector
-	pthread_mutex_unlock(&user_files_mutex);
+	pthread_mutex_unlock(user_files_mutex);
 
 	return return_str;
 }
 
-time_t Communication_server::get_mtime(string filename, string username)
+time_t Communication_server::get_mtime(string filename, string username, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)
 {
 	string path = getenv("HOME");
 	path = path + "/server_sync_dir_" + username + "/" + filename;
 
 	// Since any thread of the same user could be editing the user_files vector,
 	//we need mutual exclusion
-	pthread_mutex_lock(&user_files_mutex);
+	pthread_mutex_lock(user_files_mutex);
 
 	// Look for the file with this path
-	for(int i=0; i<user_files.size(); i++)
+	for(int i=0; i<user_files->size(); i++)
 	{
-		if(user_files[i].get_path() == path){
+		if((*user_files)[i].get_path() == path){
 			// Unlock the mutex for editing the user_files vector
-			pthread_mutex_unlock(&user_files_mutex);
+			pthread_mutex_unlock(user_files_mutex);
 			// return mtime
-			return user_files[i].get_mtime();
+			return (*user_files)[i].get_mtime();
 		}
 	}
 
 	// Unlock the mutex for editing the user_files vector
-	pthread_mutex_unlock(&user_files_mutex);
+	pthread_mutex_unlock(user_files_mutex);
 	return -1;
 }

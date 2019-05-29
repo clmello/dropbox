@@ -338,7 +338,7 @@ long int Communication_client::receive_payload(struct packet *pkt, int type) {
     while(bytes_received < pkt->length)
     {
         // read from the socket
-        int n = read(sockfd, buffer, pkt->length - bytes_received);
+        int n = read(sockfd, &buffer[bytes_received], pkt->length - bytes_received);
         if (n < 0)
             printf("ERROR reading from socket");
 

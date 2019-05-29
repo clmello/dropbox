@@ -696,7 +696,7 @@ void Communication_client::get_sync_dir(int command, std::vector<Client::file> *
 		else if (server_mtime != -1){
             // found = 0
 			std::cout << "\n(get_sync_dir) file " << complete_path << " will be downloaded (client doesn't have file)\n";
-            download_command(3, server_filename, path, &download_file);
+            download_command(2, server_filename, path, &download_file);
             watched_files->push_back(download_file);
         }
     }

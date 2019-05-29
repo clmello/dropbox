@@ -182,7 +182,7 @@ void Communication_client::send_filename(std::string filename) {
 void Communication_client::send_file(std::string filename, std::string path){
 	char* file_buffer = (char*)malloc(payload_size);
 	std::string complete_path = path + "/" + filename;
-	std::cout << "\n(send_file) PATH COMPLETO:" << complete_path;
+	//std::cout << "\n(send_file) PATH COMPLETO:" << complete_path;
 	FILE *fp = fopen(complete_path.c_str(), "r");
 
 	if(fp == NULL)
@@ -203,7 +203,7 @@ void Communication_client::send_file(std::string filename, std::string path){
     int total_size = total_size_f;
     if (total_size_f > total_size)
         total_size ++;
-    std::cout << "\n\ntotal size: " << total_size;
+    //std::cout << "\n\ntotal size: " << total_size;
 
     int i;
     int total_bytes_sent = 0;
@@ -227,8 +227,8 @@ void Communication_client::send_file(std::string filename, std::string path){
         else
             pkt.length = payload_size;
 
-        std::cout << std::endl << total_bytes_sent << " bytes have been sent";
-        std::cout << std::endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
+        //std::cout << std::endl << total_bytes_sent << " bytes have been sent";
+        //std::cout << std::endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
 
         // Read pkt.length bytes from the file
         fread(file_buffer, 1, pkt.length, fp);
@@ -251,12 +251,12 @@ void Communication_client::send_file(std::string filename, std::string path){
 	        bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
-        std::cout << "\n\nHEADER!\n";
+        /*std::cout << "\n\nHEADER!\n";
         std::cout << "bytes sent: " << bytes_sent << std::endl;
         std::cout << "type: " << pkt.type;
         std::cout << "\nseqn: " << pkt.seqn;
         std::cout << "\ntotal_size: " << pkt.total_size;
-        std::cout << "\npayload_size: " << pkt.length << std::endl;
+        std::cout << "\npayload_size: " << pkt.length << std::endl;*/
 
         //------------------------------------------------------------------------
         // SEND PAYLOAD
@@ -271,10 +271,10 @@ void Communication_client::send_file(std::string filename, std::string path){
 	        bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
-        std::cout << "PACKET!\n";
+        //std::cout << "PACKET!\n";
         //std::cout << "\npayload(char*): ";
         //printf("%.*s\n", payload_size, pkt._payload);
-        std::cout << "bytes sent: " << bytes_sent << std::endl;
+        //std::cout << "bytes sent: " << bytes_sent << std::endl;
     }
 	free(file_buffer);
 	fclose(fp);
@@ -544,9 +544,9 @@ void Communication_client::download_command(int command, std::string filename, s
 		time_t mtime = receive_payload(&pkt, 2);
 
 		// receive file
-		std::string full_path = path+"/"+filename;
+		//std::string full_path = path+"/"+filename;
 		//std::cout << "\n\nDOWNLOAD_COMMAND FULL PATH: " << full_path << "\n\n";
-		receive_file(full_path);
+		receive_file(path);
 
 		download_file->name = filename;
 		download_file->mtime = mtime;
@@ -657,7 +657,7 @@ void Communication_client::get_sync_dir(int command, std::vector<Client::file> *
         int watched_files_size = watched_files->size();
 	    int found = 0;
 		int pos = 0;
-        // percorre a watched_files pra achar as inconsistências entra os arquivos no servidor e no client
+        // percorre a watched_files pra achar as inconsistências entre os arquivos no servidor e no client
 		for(int j = 0; j < watched_files_size && !found; j++){
             // se acha o arquivo da server na watched_files
 			//std::cout << "i: " << i << "\ncomparando com: filename: \'" << (*watched_files)[j].name << "\'" << std::endl << "mtime: " << (*watched_files)[j].mtime << std::endl;
@@ -681,8 +681,10 @@ void Communication_client::get_sync_dir(int command, std::vector<Client::file> *
 	            double seconds = difftime(server_mtime, (*watched_files)[pos].mtime);
 	            if(seconds > 0) { // Se a versão do server é mais nova
 					std::cout << "\n(get_sync_dir) file " << complete_path << " will be downloaded (server version is more recent)\n";
-					download_command(2, server_filename, path, &download_file);
-	                watched_files->push_back(download_file);
+					download_command(2, server_filename, complete_path, &download_file);
+					// Update mtime
+					(*watched_files)[pos].mtime = download_file.mtime;
+	                (*watched_files)[pos].local_mtime = download_file.local_mtime;
 	            }
 	            if (seconds < 0) { // Se a versão do client é mais nova
 					std::cout << "\n(get_sync_dir) file " << complete_path << " will be uploaded (client version is more recent)\n";
@@ -698,7 +700,7 @@ void Communication_client::get_sync_dir(int command, std::vector<Client::file> *
 		else if (server_mtime != -1){
             // found = 0
 			std::cout << "\n(get_sync_dir) file " << complete_path << " will be downloaded (client doesn't have file)\n";
-            download_command(2, server_filename, path, &download_file);
+            download_command(2, server_filename, complete_path, &download_file);
             watched_files->push_back(download_file);
         }
     }
@@ -740,9 +742,11 @@ void Communication_client::exit_command(int command) {
     // Receive return int
     if(receive_int() < 0){
         std::cout << "\nServer closed\n";
-		// Unlock mutex
-		pthread_mutex_unlock(&socket_mtx);
-	    close(sockfd);
-        exit(0);
     }
+	// Unlock mutex
+	pthread_mutex_unlock(&socket_mtx);
+}
+
+void Communication_client::close_socket(){
+	close(sockfd);
 }

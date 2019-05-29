@@ -60,6 +60,7 @@ public:
 	void remove_from_watched_files(std::string filename, std::vector<Client::file> *watched_files);
 
 	void exit_command(int command);
+	void close_socket();
 };
 
 #endif // COMMUNICATION_CLIENT_H

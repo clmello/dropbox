@@ -210,6 +210,7 @@ void *Client::check_files_loop() {
         pthread_mutex_unlock(&watched_files_copy_mtx);
         sleep(10);
     }
+    communication.close_socket();
 }
 
 void *Client::check_files_helper(void* context) {
@@ -335,18 +336,13 @@ void Client::userInterface() {
             std::cout << "\nDownload " << input << "\n";
 			//std::string path = getenv("HOME");
 			std::string path = this->download_path + '/' + input;
-			//path = path + '/' + input;       
+			//path = path + '/' + input;
 			std::cout << "\npath: " << path;
             file downloadFile;
             communication.download_command(2, input, path, &downloadFile);
 
             if(downloadFile.mtime == -1) {
                 std::cout << "\nCan't download file beacuse it doesn't exist at server.";
-            } else {
-                std::cout << "\nJá passei pela download_command e recebi de volta:";
-                std::cout << "\nDownloaded file: " << downloadFile.name;
-                std::cout << "\ndownloadFile.mtime" << downloadFile.mtime;
-                this->watched_files.push_back(downloadFile);
             }
             // metodo pra download
         }
@@ -368,7 +364,7 @@ void Client::userInterface() {
             }
         }
         else if(command == "list_server") {
-            std::cout << "List Server \n";
+            //std::cout << "List Server \n";
             communication.list_server_command(4);
             // metodo pra list_server
         }
@@ -385,11 +381,15 @@ void Client::userInterface() {
 			    localtime_r(&t, &lt);
 			    char timebuf[80];
 			    strftime(timebuf, sizeof(timebuf), "%c", &lt);
-			    
+
         		ls << watched_files_copy[i].name << "(" << timebuf << ") ";
         	}
         	pthread_mutex_unlock(&watched_files_copy_mtx);
-        	std::cout << std::endl << ls.str();
+
+            if(ls.str() != "")
+        	   std::cout << std::endl << ls.str();
+            else
+                std::cout << "\n\nThe folder is empty\n";
         }
         else if(command == "get_sync_dir") {
             std::cout << "Get Sync Dir \n";
@@ -401,6 +401,7 @@ void Client::userInterface() {
             communication.exit_command(7);
             running = false;
             pthread_join(this->check_files_thread, NULL);
+            break;
             // metodo pra exit
         }
         else {

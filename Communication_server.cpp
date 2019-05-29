@@ -112,12 +112,12 @@ long int Communication_server::receive_payload(int sockfd, struct packet *pkt, i
 void *Communication_server::receive_commands(int sockfd, string username, int *thread_finished, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)//, vector<Connected_client> *connected_clients)
 {
     bool close_thread = false;
-	printf("\n\nENDERECO DO USER_FILES: %p\n\n", user_files);
+	//printf("\n\nENDERECO DO USER_FILES: %p\n\n", user_files);
     while(!close_thread) // TODO: ENQUANTO USUARIO NÃO FECHA
     {
-		vector<File_server> user_files_ = *user_files;
-		cout << "\n\nSIZE OF USER FILES: " << user_files->size() << endl;
-		cout << "SIZE OF USER FILES_: " << user_files_.size() << endl;
+		//vector<File_server> user_files_ = *user_files;
+		//cout << "\n\nSIZE OF USER FILES: " << user_files->size() << endl;
+		//cout << "SIZE OF USER FILES_: " << user_files_.size() << endl;
         // Wait for a command
         cout << endl << sockfd << ": waiting for command";
         struct packet pkt;
@@ -585,7 +585,7 @@ void Communication_server::send_file(int sockfd, string path)
 
         //cout << "\nbytes read: " << bytes_read;
         //cout << "\nConteudo lido: ";
-	    printf("%.*s\n", max_payload, file_buffer);
+	    //printf("%.*s\n", max_payload, file_buffer);
         // Save it to pkt._payload
         pkt._payload = file_buffer;
 
@@ -1010,7 +1010,7 @@ string Communication_server::get_files_and_mtime(vector<File_server> *user_files
 	else
 		return_str = "The folder is empty";
 
-	cout << "\nreturn str: " << return_str;
+	//cout << "\nreturn str: " << return_str;
 
 	// Unlock the mutex for editing the user_files vector
 	pthread_mutex_unlock(user_files_mutex);

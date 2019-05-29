@@ -329,7 +329,7 @@ void Communication_client::send_mtime(time_t mtime) {
 // Since time_t is a signed integer that can be 32 or 64 bits long (depending on
 //the system), we return a long int (64 bits signed integer)
 long int Communication_client::receive_payload(struct packet *pkt, int type) {
-    std::cout << "\nENTREI NO RECEIVE_PAYLOAD\n\n";
+    //std::cout << "\nENTREI NO RECEIVE_PAYLOAD\n\n";
     receive_header(pkt);
     //std::cout << "Saiu do header\n";
     //std::cout << "pkt->length: " << pkt->length;
@@ -347,7 +347,7 @@ long int Communication_client::receive_payload(struct packet *pkt, int type) {
 		//std::cout << "\nbytes lidos: " << bytes_received << std::endl;
         //std::cout << "\npkt lenght: " << pkt->length;
 	}
-    std::cout << "\nbytes lidos: " << bytes_received;
+    //std::cout << "\nbytes lidos: " << bytes_received;
 	pkt->_payload = (const char*)buffer;
 	switch (type)
 	{
@@ -369,7 +369,7 @@ long int Communication_client::receive_payload(struct packet *pkt, int type) {
 void Communication_client::receive_header(struct packet *_header) {
     buffer = (char*)buffer_address;
     //bzero(buffer, header_size);
-    std::cout << "\n\nENTREI NO RECEIVE_HEADER\n\n";
+    //std::cout << "\n\nENTREI NO RECEIVE_HEADER\n\n";
 	int bytes_received=0;
 	//cout << "\n\nbytes lidos: "<<bytes_received;
     while(bytes_received < header_size)
@@ -398,10 +398,10 @@ void Communication_client::receive_header(struct packet *_header) {
 	    memcpy(&_header->seqn, &buffer[2], 2);
 	    memcpy(&_header->total_size, &buffer[4], 4);
 	    memcpy(&_header->length, &buffer[8], 2);
-	    std::cout << "\ntype: " << _header->type;
+	    /*std::cout << "\ntype: " << _header->type;
 	    std::cout << "\nseqn: " << _header->seqn;
 	    std::cout << "\ntotal_size: " << _header->total_size;
-	    std::cout << "\npayload_size: " << _header->length << std::endl;
+	    std::cout << "\npayload_size: " << _header->length << std::endl;*/
     }
     //std::cout << "\nSaindo do receive_header\n";
 /*
@@ -434,8 +434,8 @@ void Communication_client::receive_file(std::string path) {
     struct packet pkt;
     receive_payload(&pkt, 0);
     uint32_t total_size = pkt.total_size;
-    std::cout << "pkt total size: " << pkt.total_size;
-    std::cout << "\n\nTHE CLIENT WILL RECEIVE " << total_size << " PACKETS!\n";
+    //std::cout << "pkt total size: " << pkt.total_size;
+    //std::cout << "\n\nTHE CLIENT WILL RECEIVE " << total_size << " PACKETS!\n";
 
     // Write the first payload to the file
     ssize_t bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
@@ -457,7 +457,7 @@ void Communication_client::receive_file(std::string path) {
         bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
         if (bytes_written_to_file < pkt.length)
             std::cout << "\nERROR WRITING TO " << path << std::endl;
-        std::cout << "\n" << bytes_written_to_file << " bytes written to file\n";
+        //std::cout << "\n" << bytes_written_to_file << " bytes written to file\n";
     }
     fclose(fp);
 }
@@ -545,7 +545,7 @@ void Communication_client::download_command(int command, std::string filename, s
 
 		// receive file
 		std::string full_path = path+"/"+filename;
-		std::cout << "\n\nDOWNLOAD_COMMAND FULL PATH: " << full_path << "\n\n";
+		//std::cout << "\n\nDOWNLOAD_COMMAND FULL PATH: " << full_path << "\n\n";
 		receive_file(full_path);
 
 		download_file->name = filename;

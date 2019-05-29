@@ -550,7 +550,7 @@ void Communication_server::send_file(int sockfd, string path)
     int total_size = total_size_f;
     if (total_size_f > total_size)
         total_size ++;
-    cout << "\n\ntotal size: " << total_size;
+    //cout << "\n\ntotal size: " << total_size;
 
     int i;
     int total_bytes_sent = 0;
@@ -583,8 +583,8 @@ void Communication_server::send_file(int sockfd, string path)
         if(bytes_read != pkt.length)
             cout << "\nError reading from file \"" << path << "\"";
 
-        cout << "\nbytes read: " << bytes_read;
-        cout << "\nConteudo lido: ";
+        //cout << "\nbytes read: " << bytes_read;
+        //cout << "\nConteudo lido: ";
 	    printf("%.*s\n", max_payload, file_buffer);
         // Save it to pkt._payload
         pkt._payload = file_buffer;
@@ -625,10 +625,10 @@ void Communication_server::send_file(int sockfd, string path)
 	        bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
-        cout << "PACKET!\n";
+        /*cout << "PACKET!\n";
         cout << "\npayload(char*): ";
         printf("%.*s\n", max_payload, pkt._payload);
-        cout << "bytes sent: " << bytes_sent << endl;
+        cout << "bytes sent: " << bytes_sent << endl;*/
         //------------------------------------------------------------------------
     }
     //free(file_buffer);

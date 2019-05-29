@@ -28,7 +28,8 @@ typedef	struct	packet{
 	const char*	_payload;				//Dados do pacote
 }	packet;
 
-
+vector<File_server> user_files;
+pthread_mutex_t user_files_mutex;
 
 struct th_args{
 	void* obj = NULL;
@@ -73,7 +74,7 @@ class Communication_server
 		//vector<file> watched_files;
 
 		void *accept_connections();
-		void *receive_commands(int sockfd, string username, int *thread_finished, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
+		void *receive_commands(int sockfd, string username, int *thread_finished);
 
 		//TODO: vai ter que tirar tudo isso
 		//bool file_is_watched(string filename);
@@ -82,15 +83,15 @@ class Communication_server
 		//void remove_watched_file(string filename);
 
 		//pthread_mutex_t *get_file_mutex(vector<File_server> *user_files, string path, pthread_mutex_t *user_files_mutex);
-		void update_user_file(string path, time_t mtime, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
-        int start_reading_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
-        void done_reading_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
-        void start_writing_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex, time_t mtime);
-        void done_writing_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
-		void remove_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
-		bool file_exists(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
-		string get_files_and_mtime(vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
-		time_t get_mtime(string filename, string username, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
+		void update_user_file(string path, time_t mtime);
+        int start_reading_file(string path);
+        void done_reading_file(string path);
+        void start_writing_file(string path, time_t mtime);
+        void done_writing_file(string path);
+		void remove_file(string path);
+		bool file_exists(string path);
+		string get_files_and_mtime();
+		time_t get_mtime(string filename, string username);
 
 };
 

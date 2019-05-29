@@ -544,7 +544,9 @@ void Communication_client::download_command(int command, std::string filename, s
 		time_t mtime = receive_payload(&pkt, 2);
 
 		// receive file
-		receive_file(path);
+		std::string full_path = path+"/"+filename;
+		std::cout << "\n\nDOWNLOAD_COMMAND FULL PATH: " << full_path << "\n\n";
+		receive_file(full_path);
 
 		download_file->name = filename;
 		download_file->mtime = mtime;

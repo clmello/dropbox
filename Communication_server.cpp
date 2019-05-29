@@ -116,6 +116,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
     while(!close_thread) // TODO: ENQUANTO USUARIO NÃO FECHA
     {
         // Wait for a command
+		printf("\n\nENDERECO DO USER_FILES: %p\n\n", user_files);
         cout << endl << sockfd << ": waiting for command";
         struct packet pkt;
         int command = receive_payload(sockfd, &pkt, 1);

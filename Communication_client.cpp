@@ -377,7 +377,7 @@ void Communication_client::receive_header(struct packet *_header) {
         //std::cout << "\nheader size: " << header_size;
         //std::cout << "\nBYTES_LIDOS ANTES DO READ: " << bytes_received;
         //int n = read(sockfd, buffer, header_size);
-        int n = read(sockfd, buffer, header_size - bytes_received);
+        int n = read(sockfd, &buffer[bytes_received], header_size - bytes_received);
         //std::cout << "\nBYTES_LIDOS DEPOIS DO READ: " << bytes_received;
         //cout << "\nN DEPOIS DO READ: " << n;
         if (n < 0) {

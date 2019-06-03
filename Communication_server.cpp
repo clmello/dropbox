@@ -26,7 +26,7 @@ void Communication_server::receive_header(int sockfd, struct packet *header)
         //cout << "\n\nsockfd = " << sockfd << "\n\n";
         /* read from the socket */
         //cout << "\nBYTES_LIDOS ANTES DO READ: " << bytes_received;
-        int n = read(sockfd, buffer, header_size-bytes_received);
+        int n = read(sockfd, &buffer[bytes_received], header_size-bytes_received);
         //cout << "\nBYTES_LIDOS DEPOIS DO READ: " << bytes_received;
         //cout << "\nN DEPOIS DO READ: " << n;
         if (n < 0)

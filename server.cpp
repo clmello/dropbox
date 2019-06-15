@@ -17,8 +17,26 @@ void signal_handler(int sig)
 
 
 
-int main()
+int main(int argc, char **argv)
 {
+	string host = "";
+	int port = 0;
+	switch (argc) {
+		case 1:{
+			break;
+		}
+		case 3:{
+			host = argv[1];
+			port = atoi(argv[2]);
+			break;
+		}
+		default:{
+			std::cerr << "Wrong usage. Use the following format:\n";
+			std::cerr << "./dropboxServer <active_server_ip_address> <active_server_port> \n";
+			std::exit(1);
+		}
+	}
+
 	// Link the signal_handler function to the sigInt signal. Once the user presses
 	//ctrl+c, the function will be called and close_server will be true
 	struct sigaction sigInt_handler;
@@ -28,6 +46,6 @@ int main()
 	sigaction(SIGINT, &sigInt_handler, NULL);
 
 	// Start the server
-	Synchronization_server server(4001);
+	Synchronization_server server(4001, host, port);
 	return 0;
 }

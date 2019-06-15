@@ -22,7 +22,7 @@ using namespace std;
 class Synchronization_server
 {
 	public:
-		Synchronization_server(int port);
+		Synchronization_server(int port, string main_ip, int main_port);
 
 	protected:
 
@@ -36,12 +36,14 @@ class Synchronization_server
 		size_t buffer_address;
 		struct packet* header;
 		size_t header_address;
+		string main_ip;
+		int main_port;
 		struct file{time_t mtime; string name;};
 		vector<file> watched_files;
 		vector<Connected_client> connected_clients;
 		vector<int*> threads_finished_address;
 
-		void *accept_connections();
+		void *accept_connections(string host, int port);
 		void close_server();
 
 		void check_finished_threads();

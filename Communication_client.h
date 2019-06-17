@@ -52,6 +52,11 @@ public:
 	long get_file_size(FILE *fp);
 	int delete_file(std::string path);
 
+	bool send_command_alive(int command);
+	long int receive_payload_alive(struct packet *pkt, int type);
+	bool receive_header_alive(struct packet *_header);
+	void check_server();
+
 	void upload_command(int command, std::string filename, std::string path, time_t mtime);
 	void download_command(int command, std::string filename, std::string path, Client::file *download_file);
 	void delete_command(int command, std::string filename, std::string path);

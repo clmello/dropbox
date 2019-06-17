@@ -203,12 +203,18 @@ void Client::check_files() {
 void *Client::check_files_loop() {
     // enquanto a thread está aberta
     while(running) {
+        // std::cout << "Entrando no loop\n";
+        // communication.check_server();
+        // std::cout << "SAI DA CHECK_SERVER\n";
         check_files();
+        // std::cout << "SAI DA CHECK FILES\n";
         communication.get_sync_dir(6, &watched_files, this->dir);
+        // std::cout << "SAI DA GET SYNC DIR\n";
         pthread_mutex_lock(&watched_files_copy_mtx);
         watched_files_copy = watched_files;
         pthread_mutex_unlock(&watched_files_copy_mtx);
-        sleep(10);
+        // std::cout << "Saindo do loop\n";
+        sleep(5);
     }
     communication.close_socket();
 }

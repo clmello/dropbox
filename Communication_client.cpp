@@ -482,6 +482,138 @@ int Communication_client::delete_file(std::string path) {
     return error;
 }
 
+bool Communication_client::send_command_alive(int command) {
+	int n;
+	packet pkt;
+	pkt.type = 1;
+    pkt.seqn = 0;
+    pkt.total_size = 1;
+    pkt.length = sizeof(int);
+	pkt._payload = (const char*)&command;
+
+	// send header
+	// write in the socket
+	buffer = (char*)&pkt;
+    bool timeout = false;
+    clock_t start = clock();
+	int bytes_sent = 0;
+	while (bytes_sent < header_size && !timeout)
+	{
+        // timeout
+        if(((clock()-start) / (double)CLOCKS_PER_SEC) >= 10)
+			timeout = true;
+	    n = write(sockfd, &buffer[bytes_sent], header_size - bytes_sent);
+        if (n < 0) {
+		    printf("ERROR writing to socket\n");
+        }
+		bytes_sent += n;
+    }
+    if(timeout)
+        return false;
+    //std::cout << "bytes sent: " << bytes_sent << std::endl;
+    //send payload
+	// write in the socket
+    start = clock();
+	bytes_sent = 0;
+	while (bytes_sent < pkt.length && !timeout)
+	{
+        // timeout
+		if(((clock()-start) / (double)CLOCKS_PER_SEC) >= 10)
+			timeout = true;
+	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
+        if (n < 0) {
+		    printf("ERROR writing to socket\n");
+        }
+		bytes_sent += n;
+    }
+    if(timeout)
+        return false;
+    return true;
+    //std::cout << "bytes sent: " << bytes_sent << std::endl;
+}
+
+long int Communication_client::receive_payload_alive(struct packet *pkt, int type) {
+    bool isAlive = receive_header_alive(pkt);
+	if (!isAlive) {
+		return -1;
+	}
+    int bytes_received = 0;
+	bool timeout = false;
+	clock_t start = clock();
+    while(bytes_received < pkt->length)
+    {
+		if(((clock()-start) / (double)CLOCKS_PER_SEC) >= 10)
+			timeout = true;
+        // read from the socket
+        int n = read(sockfd, &buffer[bytes_received], pkt->length - bytes_received);
+        if (n < 0)
+            printf("ERROR reading from socket");
+
+        bytes_received+=n;
+	}
+	if(timeout)
+	{
+		return -1;
+	}
+	pkt->_payload = (const char*)buffer;
+
+	switch (type)
+	{
+		case 1:{
+	        int command;
+	        memcpy(&command, pkt->_payload, pkt->length);
+	        return command;
+		}
+		case 2:{
+			time_t mtime= *(time_t*)pkt->_payload;
+			return mtime;
+		}
+		default:
+			return 0;
+	}
+}
+
+bool Communication_client::receive_header_alive(struct packet *_header) {
+    buffer = (char*)buffer_address;
+	int bytes_received=0;
+	bool timeout = false;
+	clock_t start = clock();
+    while(bytes_received < header_size)
+    {
+		if(((clock()-start) / (double)CLOCKS_PER_SEC) >= 10)
+			timeout = true;
+        int n = read(sockfd, buffer, header_size - bytes_received);
+        if (n < 0) {
+            printf("ERROR reading from socket");
+        }
+
+        bytes_received+=n;
+	}
+	if(timeout) {
+		return false;
+	}
+	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
+	{
+	    memcpy(&_header->type, &buffer[0], 2);
+	    memcpy(&_header->seqn, &buffer[2], 2);
+	    memcpy(&_header->total_size, &buffer[4], 4);
+	    memcpy(&_header->length, &buffer[8], 2);
+    }
+	return true;
+}
+
+void Communication_client::check_server() {
+    std::cout << "\nENTREI NA CHECK_SERVER\n";
+    send_command(10);
+	packet pkt;
+	int isAlive = receive_payload_alive(&pkt, 1);
+
+    if(isAlive < 0)
+        std::cout << "IT'S DEAD!!!\n";
+    else
+        std::cout << "IT'S ALIVE!!!\n";
+	std::cout << "hora de ir embora\n";
+}
 
 void Communication_client::upload_command(int command, std::string filename, std::string path, time_t mtime) {
 	// Lock mutex to make sure that the other thread won't execute other commands while this command is running

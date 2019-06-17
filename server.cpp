@@ -45,7 +45,9 @@ int main(int argc, char **argv)
 	sigInt_handler.sa_flags = 0;
 	sigaction(SIGINT, &sigInt_handler, NULL);
 
+cout << "\n\nhost: " << host << "\nport: " << port << "\n\n";
+
 	// Start the server
-	Synchronization_server server(4001, host, port);
+	Synchronization_server server(4006, 4007, host, port);
 	return 0;
 }

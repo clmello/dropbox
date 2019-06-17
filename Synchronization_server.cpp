@@ -6,9 +6,10 @@ using namespace std;
 extern bool closing_server;
 
 
-Synchronization_server::Synchronization_server(int port, string main_ip, int main_port)
+Synchronization_server::Synchronization_server(int port, int backup_port, string main_ip, int main_port)
 {
 	this->port = port;
+	this->backup_port = backup_port;
 	this->header_size = 10;
 	this->max_payload = 502;
 	this->packet_size = this->header_size + this->max_payload;
@@ -18,136 +19,178 @@ Synchronization_server::Synchronization_server(int port, string main_ip, int mai
 	this->header_address = (size_t)header;
 	this->main_ip = main_ip;
 	this->main_port = main_port;
+	cout << "\n\nhost: " << this->main_ip << "\nport: " << this->main_port << "\n\n";
 	//cout << "\nchamando aceita_conexoes\n";
-	accept_connections(main_ip, port);
+	accept_connections();
 }
 
-void *Synchronization_server::accept_connections(string host, int port)
+void Synchronization_server::accept_connections()
 {
-	// If host == "", this is the main server
+	// If main_ip == "", this is the main server
 	// Otherwise, this is a backup
-	if(host=="")
+	if(main_ip=="")
 	{
 		cout << "\n\nmain server\n\n";
-	    socklen_t clilen;
-	    struct sockaddr_in serv_addr, cli_addr;
+	    socklen_t clilen, bkplen;
+	    struct sockaddr_in serv_addr, cli_addr, serv_addr_bkp, bkp_addr;
 
+		//-----------------------------------------------------------------------------------------
+		// INITIALIZE CLIENT CONNECTION SOCKET
+		//-----------------------------------------------------------------------------------------
 	    // Create the socket as non-blocking. Without this, it's impossible for the server to close (since it blocks)
-	    // Será que precisa? Como que o server é fechado?
-	    //if ((accept_sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-	    if ((accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
+	    if ((client_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
 	        printf("ERROR opening socket");
-	    cout << "\nsocket aberto\n";
+	    cout << "\nsocket aberto (porta " << port << ")\n";
 
 	    serv_addr.sin_family = AF_INET;
 	    serv_addr.sin_port = htons(port);
 	    serv_addr.sin_addr.s_addr = INADDR_ANY;
 	    bzero(&(serv_addr.sin_zero), 8);
 
-	    if (bind(accept_sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+	    if (bind(client_accept_sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
 	        printf("ERROR on binding");
 	    cout << "\nbinding completo\n";
-
-
-	    listen(accept_sockfd, 5);
+	    listen(client_accept_sockfd, 5);
 	    clilen = sizeof(struct sockaddr_in);
+		//-----------------------------------------------------------------------------------------
+
+		//-----------------------------------------------------------------------------------------
+		// INITIALIZE BACKUP CONNECTION SOCKET
+		//-----------------------------------------------------------------------------------------
+		// Open the socket as non-blocking
+	    if ((backup_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
+	        printf("ERROR opening socket");
+	    cout << "\nsocket aberto (porta " << backup_port << ")\n";
+
+	    serv_addr_bkp.sin_family = AF_INET;
+	    serv_addr_bkp.sin_port = htons(backup_port);
+	    serv_addr_bkp.sin_addr.s_addr = INADDR_ANY;
+	    bzero(&(serv_addr_bkp.sin_zero), 8);
+
+	    if (bind(backup_accept_sockfd, (struct sockaddr *) &serv_addr_bkp, sizeof(serv_addr_bkp)) < 0)
+	        printf("ERROR on binding");
+	    cout << "\nbinding completo\n";
+	    listen(backup_accept_sockfd, 5);
+	    bkplen = sizeof(struct sockaddr_in);
+		//-----------------------------------------------------------------------------------------
+
 	    while(true)
 	    {
-	        int newsockfd = -1;
-	        cout << "\nWaiting for connection . . .";
+			int newsockfd = -1;
+			int backup_sockfd = -1;
+			cout << "\nWaiting for connections . . .";
 
 	        // Accept connections
-	        while(newsockfd<0 && !closing_server){
+	        while(newsockfd<0 && !closing_server && backup_sockfd<0){
 	            // Check if any threads finished
 	            check_finished_threads();
-	            newsockfd = accept(accept_sockfd, (struct sockaddr *) &cli_addr, &clilen);
+	            newsockfd = accept(client_accept_sockfd, (struct sockaddr *) &cli_addr, &clilen);
+	            backup_sockfd = accept(backup_accept_sockfd, (struct sockaddr *) &bkp_addr, &bkplen);
 	        }
+			// CLOSING SERVER
 	        if(closing_server)
 	            close_server();
 
-	        cout << "\nNew connection request";
-
-	        // Receive username from client
-	        struct packet *pkt = receive_payload(newsockfd);
-	        string str_buff = pkt->_payload;
-	        string new_client_username = str_buff.substr(0, pkt->length);
-
-			// Check if the client is already connected. If it is, check if number of connections > max_connections
-			// num_connections will be -1 if number of connections > max_connections. Also, if it is connected its file_server vector and its
-			//file_server mutex should be the same (reference)
-			vector<File_server> *files_vector = NULL;
-			pthread_mutex_t *files_mutex = NULL;
-			int num_connections=1;
-	        for(int i=0; i<connected_clients.size(); i++){
-	            //cout << "\nverificando username \"" << new_client_username << "\" contra \"" << *connected_clients[i].get_username() << "\"";
-	            if(new_client_username == *connected_clients[i].get_username()){
-	                num_connections = connected_clients[i].new_connection();
-					files_vector = connected_clients[i].get_user_files();
-					files_mutex = connected_clients[i].get_user_files_mutex();
-				}
-	        }
-
-			// If this is the first client with this username or not, create the new connected client with the correct constructor
-			Connected_client new_client;
-			if(files_vector==NULL)
-		    	new_client.init(new_client_username, newsockfd, num_connections, port, header_size, max_payload);
-			else
-		    	new_client.init(new_client_username, newsockfd, num_connections, port, header_size, max_payload, files_vector, files_mutex);
-
-	        if(num_connections < 0){ // Too many connections
-	            cout << "\nClient " << new_client_username << " failed to connect. Too many connections.";
-	            // Tell the client to close
-	            new_client.com.send_int(newsockfd, -1);
-	        }
-			else
+			// NEW BACKUP
+			if(backup_sockfd>=0)
 			{
-			    cout << "\nClient " << new_client_username << " connected";
+		        cout << "\nNew backup connection request";
+				// TODO: CRIAR THREAD PARA O BACKUP
+				/*Communication_server com;
+				com.Init(backup_port, header_size, max_payload);
+				com.send_string(backup_sockfd, "alive");*/
+			}
 
-			    // Tell the client that the connection has been accepted
-			    new_client.com.send_int(newsockfd, 1);
+			// NEW CLIENT
+			if(newsockfd>=0)
+			{
+		        cout << "\nNew client connection request";
 
-			    // Create client folder, if it doesn't already exist
-			    string homedir = getenv("HOME");
-			    new_client.com.create_folder(homedir+"/server_sync_dir_"+new_client_username);
+		        // Receive username from client
+		        struct packet *pkt = receive_payload(newsockfd);
+		        string str_buff = pkt->_payload;
+		        string new_client_username = str_buff.substr(0, pkt->length);
 
-			    // add new_client to the connected_clients vector
-			    connected_clients.push_back(new_client);
+				// Check if the client is already connected. If it is, check if number of connections > max_connections
+				// num_connections will be -1 if number of connections > max_connections. Also, if it is connected its file_server vector and its
+				//file_server mutex should be the same (reference)
+				vector<File_server> *files_vector = NULL;
+				pthread_mutex_t *files_mutex = NULL;
+				int num_connections=1;
+		        for(int i=0; i<connected_clients.size(); i++){
+		            //cout << "\nverificando username \"" << new_client_username << "\" contra \"" << *connected_clients[i].get_username() << "\"";
+		            if(new_client_username == *connected_clients[i].get_username()){
+		                num_connections = connected_clients[i].new_connection();
+						files_vector = connected_clients[i].get_user_files();
+						files_mutex = connected_clients[i].get_user_files_mutex();
+					}
+		        }
 
-			    // Add an entry to the client_threads_finished vector
-	            int* address = (int*)malloc(sizeof(int));
-	            *address = 0;
-			    threads_finished_address.push_back(address);
+				// If this is the first client with this username or not, create the new connected client with the correct constructor
+				Connected_client new_client;
+				if(files_vector==NULL)
+			    	new_client.init(new_client_username, newsockfd, num_connections, port, header_size, max_payload);
+				else
+			    	new_client.init(new_client_username, newsockfd, num_connections, port, header_size, max_payload, files_vector, files_mutex);
 
-	            // Create a struct with the arguments to be sent to the new thread
-	            struct th_args args;
-	            args.obj = &new_client.com;
-	            args.newsockfd = new_client.get_sockfd();
-	            args.username = new_client.get_username();
-	            args.thread_finished = address;
-				args.user_files = new_client.get_user_files();
-				args.user_files_mutex = new_client.get_user_files_mutex();
+		        if(num_connections < 0){ // Too many connections
+		            cout << "\nClient " << new_client_username << " failed to connect. Too many connections.";
+		            // Tell the client to close
+		            new_client.com.send_int(newsockfd, -1);
+		        }
+				else
+				{
+				    cout << "\nClient " << new_client_username << " connected";
 
-	            // Create the thread for this client
-			    pthread_t client_thread;
-	            pthread_create(&client_thread, NULL, new_client.com.receive_commands_helper, &args);
+				    // Tell the client that the connection has been accepted
+				    new_client.com.send_int(newsockfd, 1);
 
-	            // Set the new connected client thread
-	            connected_clients.back().set_thread(client_thread);
-	        }
-	    }
+				    // Create client folder, if it doesn't already exist
+				    string homedir = getenv("HOME");
+				    new_client.com.create_folder(homedir+"/server_sync_dir_"+new_client_username);
+
+				    // add new_client to the connected_clients vector
+				    connected_clients.push_back(new_client);
+
+				    // Add an entry to the client_threads_finished vector
+		            int* address = (int*)malloc(sizeof(int));
+		            *address = 0;
+				    threads_finished_address.push_back(address);
+
+		            // Create a struct with the arguments to be sent to the new thread
+		            struct th_args args;
+		            args.obj = &new_client.com;
+		            args.newsockfd = new_client.get_sockfd();
+		            args.username = new_client.get_username();
+		            args.thread_finished = address;
+					args.user_files = new_client.get_user_files();
+					args.user_files_mutex = new_client.get_user_files_mutex();
+
+		            // Create the thread for this client
+				    pthread_t client_thread;
+		            pthread_create(&client_thread, NULL, new_client.com.receive_commands_helper, &args);
+
+		            // Set the new connected client thread
+		            connected_clients.back().set_thread(client_thread);
+		        }
+		    }
+		}
 	}
+	//-----------------------------------------------------------------------------------------
 	// Backup server
+	//-----------------------------------------------------------------------------------------
 	else
 	{
 		cout << "\n\nbackup server\n\n";
 
-		// TODO: conecta com main server
+		cout << "\n\nhost: " << this->main_ip << "\nport: " << this->main_port << "\n\n";
+		int sockfd = connect_backup_to_main();
 
 		bool server_died = false;
 		while(!server_died)
 		{
 	        // Receive heartbeat from main server
-	        struct packet *pkt;// = receive_payload(sockfd);
+	        struct packet *pkt = receive_payload(sockfd);
 			// Check if timed out
 			if(pkt->type == 10)
 				server_died = true;
@@ -159,11 +202,14 @@ void *Synchronization_server::accept_connections(string host, int port)
 				// If server closing
 				if(msg=="kill")
 					close_server();
+				if(msg=="alive")
+					cout << "\nIT'S ALIIIIIIVE!!!!!!\n";
 			}
 		}
 
 		// TODO: eleição
 	}
+	//-----------------------------------------------------------------------------------------
 }
 
 void Synchronization_server::close_server()
@@ -175,12 +221,39 @@ void Synchronization_server::close_server()
         cout << endl << "closing socket " << *connected_clients[i].get_sockfd();
         close(*connected_clients[i].get_sockfd());
         cout << endl << "DONE!";
+		// TODO: DAR JOIN EM TODAS AS THREADS DOS BACKUPS
     }
-    cout << "\nclosing accept socket";
-    close(accept_sockfd);
+    cout << "\nclosing accept sockets";
+	close(client_accept_sockfd);
+    close(backup_accept_sockfd);
     cout << "\nDONE!";
     cout << "\nserver closed\n";
     exit(0);
+}
+
+int Synchronization_server::connect_backup_to_main()
+{
+	struct sockaddr_in main_addr; // server_address
+    struct hostent *server = gethostbyname(main_ip.c_str());
+
+	if (server == NULL)
+		std::cerr << "ERROR, no such host\n";
+
+	cout << "\n\nhostname: " << main_ip << "\nport: " << main_port << "\n\n";
+
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1)
+		std::cerr << "ERROR opening socket\n";
+
+	main_addr.sin_family = AF_INET;
+	main_addr.sin_port = htons(main_port);
+	main_addr.sin_addr = *((struct in_addr *)server->h_addr);
+	bzero(&(main_addr.sin_zero), 8);
+
+	if (connect(sockfd,(struct sockaddr *) &main_addr,sizeof(main_addr)) < 0)
+		std::cerr << "ERROR connecting with server\n";
+
+	return sockfd;
 }
 
 void Synchronization_server::check_finished_threads()

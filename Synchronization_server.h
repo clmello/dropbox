@@ -16,19 +16,22 @@
 #include <vector>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <netdb.h>
 
 using namespace std;
 
 class Synchronization_server
 {
 	public:
-		Synchronization_server(int port, string main_ip, int main_port);
+		Synchronization_server(int port, int backup_port, string main_ip, int main_port);
 
 	protected:
 
 	private:
-		int accept_sockfd;
+		int client_accept_sockfd;
+		int backup_accept_sockfd;
 		int port;
+		int backup_port;
 		int header_size;
 		int max_payload;
 		int packet_size;
@@ -43,7 +46,8 @@ class Synchronization_server
 		vector<Connected_client> connected_clients;
 		vector<int*> threads_finished_address;
 
-		void *accept_connections(string host, int port);
+		int connect_backup_to_main();
+		void accept_connections();
 		void close_server();
 
 		void check_finished_threads();

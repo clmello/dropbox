@@ -19,7 +19,7 @@ Synchronization_server::Synchronization_server(int port, string main_ip, int mai
 	this->main_ip = main_ip;
 	this->main_port = main_port;
 	//cout << "\nchamando aceita_conexoes\n";
-	accept_connections(main_ip, main_port);
+	accept_connections(main_ip, port);
 }
 
 void *Synchronization_server::accept_connections(string host, int port)
@@ -147,7 +147,7 @@ void *Synchronization_server::accept_connections(string host, int port)
 		while(!server_died)
 		{
 	        // Receive heartbeat from main server
-	        struct packet *pkt = receive_payload(sockfd);
+	        struct packet *pkt;// = receive_payload(sockfd);
 			// Check if timed out
 			if(pkt->type == 10)
 				server_died = true;

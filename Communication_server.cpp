@@ -338,6 +338,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
             }
             case 10: // client sends this command to server to check is server is still aliver
             {
+                cout << endl << sockfd << ": command 6 received";
                 send_int(sockfd, 1);
                 break;
             }

@@ -605,14 +605,15 @@ bool Communication_client::receive_header_alive(struct packet *_header) {
 void Communication_client::check_server() {
     std::cout << "\nENTREI NA CHECK_SERVER\n";
     send_command(10);
-	packet pkt;
-	int isAlive = receive_payload_alive(&pkt, 1);
+	int isAlive = receive_int();
+	//packet pkt;
+	//int isAlive = receive_payload_alive(&pkt, 1);
 
-    if(isAlive < 0)
+    /*if(isAlive < 0)
         std::cout << "IT'S DEAD!!!\n";
     else
         std::cout << "IT'S ALIVE!!!\n";
-	std::cout << "hora de ir embora\n";
+	std::cout << "hora de ir embora\n";*/
 }
 
 void Communication_client::upload_command(int command, std::string filename, std::string path, time_t mtime) {

@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <netdb.h>
+#include <fcntl.h>
 
 using namespace std;
 

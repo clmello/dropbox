@@ -96,9 +96,9 @@ void Synchronization_server::accept_connections()
 			{
 		        cout << "\nNew backup connection request";
 				// TODO: CRIAR THREAD PARA O BACKUP
-				/*Communication_server com;
+				Communication_server com;
 				com.Init(backup_port, header_size, max_payload);
-				com.send_string(backup_sockfd, "alive");*/
+				com.send_string(backup_sockfd, "alive");
 			}
 
 			// NEW CLIENT
@@ -239,8 +239,6 @@ int Synchronization_server::connect_backup_to_main()
 	if (server == NULL)
 		std::cerr << "ERROR, no such host\n";
 
-	cout << "\n\nhostname: " << main_ip << "\nport: " << main_port << "\n\n";
-
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1)
 		std::cerr << "ERROR opening socket\n";
@@ -253,6 +251,11 @@ int Synchronization_server::connect_backup_to_main()
 	if (connect(sockfd,(struct sockaddr *) &main_addr,sizeof(main_addr)) < 0)
 		std::cerr << "ERROR connecting with server\n";
 
+	// Make socket non-blocking
+	int fl = fcntl(sockfd, F_GETFL, 0);
+	fcntl(sockfd, F_SETFL, fl | O_NONBLOCK);
+
+	cout << endl << "Backup connected";
 	return sockfd;
 }
 
@@ -304,20 +307,26 @@ packet* Synchronization_server::receive_header(int sockfd)
 
 	int bytes_received=0;
 	bool timedout = false;
-	clock_t start = clock();
+
+	// Set up the timeout
+	fd_set input;
+	FD_ZERO(&input);
+	FD_SET(sockfd, &input);
+	struct timeval timeout;
+	timeout.tv_sec = 10;
+	timeout.tv_usec = 0;
+	int n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+
     while(bytes_received < header_size && !timedout)
     {
-		// TIMEOUT!
-		if(((clock()-start) / (double)CLOCKS_PER_SEC) >= 10)
-			timedout = true;
-
         int n = read(sockfd, &buffer[bytes_received], header_size-bytes_received);
-        if (n < 0)
-            printf("ERROR reading from socket");
-
-        bytes_received+=n;
+		if(n > 0)
+        	bytes_received+=n;
+		else if(n < 0)
+			timedout = true;
 	}
 	if(timedout){
+		cout << endl << "TIMEOUT NO RECEIVE_HEADER!";
 		header->type = 10;
 		return header;
 	}
@@ -341,20 +350,29 @@ packet* Synchronization_server::receive_payload(int sockfd)
 
 	int bytes_received=0;
 	bool timedout = false;
-	clock_t start = clock();
+
+	// Set up the timeout
+	fd_set input;
+	FD_ZERO(&input);
+	FD_SET(sockfd, &input);
+	struct timeval timeout;
+	timeout.tv_sec = 10;
+	timeout.tv_usec = 0;
+	int n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+
     while(bytes_received < pkt->length && !timedout)
     {
-		// TIMEOUT!
-		if(((clock()-start) / (double)CLOCKS_PER_SEC) >= 10)
-			timedout = true;
-
         // read from the socket
         int n = read(sockfd, &buffer[bytes_received], pkt->length-bytes_received);
-        if (n < 0)
-            printf("ERROR reading from socket");
-
-        bytes_received+=n;
+		if(n > 0)
+        	bytes_received+=n;
+		else if(n < 0)
+			timedout = true;
 	}
 	pkt->_payload = (const char*)buffer;
+	if(timedout){
+		cout << endl << "TIMEOUT NO RECEIVE_HEADER!";
+		header->type = 10;
+	}
 	return pkt;
 }

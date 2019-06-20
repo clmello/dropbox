@@ -19,8 +19,6 @@ Communication_client::Communication_client() {
 	this->packet_size = this->header_size + this->payload_size;
 	this->buffer = (char*)malloc(header_size);
     this->buffer_address = (size_t)buffer;
-    //this->header = (packet*)malloc(header_size);
-	//this->header_address = (size_t)header;
 }
 
 bool Communication_client::connect_client_server(Client client) {
@@ -61,7 +59,6 @@ bool Communication_client::connect_client_server(Client client) {
   	pkt.total_size = 1;
   	pkt.length = strlen(payload);
 	pkt._payload = payload;
-    std::cout << "\n\npayload: " << pkt._payload << std::endl;
 
 	buffer = (char*)&pkt;
 
@@ -76,7 +73,6 @@ bool Communication_client::connect_client_server(Client client) {
 		}
 		bytes_sent += n;
     }
-    std::cout << "bytes sent: " << bytes_sent << std::endl;
 
 	// Escreve o payload
 	bytes_sent = 0;
@@ -89,10 +85,9 @@ bool Communication_client::connect_client_server(Client client) {
 		}
 		bytes_sent += n;
     }
-    std::cout << "bytes sent: " << bytes_sent << std::endl;
 
 
-    if(receive_int() < 0) {
+    if(receive_int(0) < 0) {
         std::cout << "\nConnection refused\nToo many connections\n";
         return connect;
     } else {
@@ -102,9 +97,8 @@ bool Communication_client::connect_client_server(Client client) {
 }
 
 
-void Communication_client::send_command(int command) {
+bool Communication_client::send_command(int command) {
 	int n;
-	//printf("\nentrei na send_command\n");
 
 	packet pkt;
 	pkt.type = 1;
@@ -121,10 +115,9 @@ void Communication_client::send_command(int command) {
 	{
 	    n = write(sockfd, &buffer[bytes_sent], header_size - bytes_sent);
         if (n < 0)
-		    printf("ERROR writing to socket\n");
+		    return false;
 		bytes_sent += n;
     }
-    //std::cout << "bytes sent: " << bytes_sent << std::endl;
     //send payload
 	// write in the socket
 	bytes_sent = 0;
@@ -132,10 +125,10 @@ void Communication_client::send_command(int command) {
 	{
 	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
         if (n < 0)
-		    printf("ERROR writing to socket\n");
+		    return false;
 		bytes_sent += n;
     }
-    //std::cout << "bytes sent: " << bytes_sent << std::endl;
+	return true;
 }
 
 void Communication_client::send_filename(std::string filename) {
@@ -149,7 +142,6 @@ void Communication_client::send_filename(std::string filename) {
     pkt.total_size = 1;
     pkt.length = filename.size();
 	pkt._payload = payload;
-    std::cout << "\n\n(send_filename) filename: " << pkt._payload << std::endl;
 
 	// copy pkt to buffer
 	buffer = (char*)&pkt;
@@ -164,7 +156,6 @@ void Communication_client::send_filename(std::string filename) {
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
-    //std::cout << "bytes sent: " << bytes_sent << std::endl;
 
     //send payload
 	/* write in the socket */
@@ -176,13 +167,11 @@ void Communication_client::send_filename(std::string filename) {
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
-    //std::cout << "bytes sent: " << bytes_sent << std::endl;
 }
 
 void Communication_client::send_file(std::string filename, std::string path){
 	char* file_buffer = (char*)malloc(payload_size);
 	std::string complete_path = path + "/" + filename;
-	//std::cout << "\n(send_file) PATH COMPLETO:" << complete_path;
 	FILE *fp = fopen(complete_path.c_str(), "r");
 
 	if(fp == NULL)
@@ -203,12 +192,9 @@ void Communication_client::send_file(std::string filename, std::string path){
     int total_size = total_size_f;
     if (total_size_f > total_size)
         total_size ++;
-    //std::cout << "\n\ntotal size: " << total_size;
 
     int i;
     int total_bytes_sent = 0;
-    //std::cout << "\n\nenviando: " << std::endl;
-	//printf("%.*s\n", payload_size, buffer);
 
     // Send each packet
     // If only one packet will be sent, the program will go through the loop only once
@@ -226,9 +212,6 @@ void Communication_client::send_file(std::string filename, std::string path){
             pkt.length = total_payload_size - (total_bytes_sent - header_size*(i-1));
         else
             pkt.length = payload_size;
-
-        //std::cout << std::endl << total_bytes_sent << " bytes have been sent";
-        //std::cout << std::endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
 
         // Read pkt.length bytes from the file
         fread(file_buffer, 1, pkt.length, fp);
@@ -251,12 +234,6 @@ void Communication_client::send_file(std::string filename, std::string path){
 	        bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
-        /*std::cout << "\n\nHEADER!\n";
-        std::cout << "bytes sent: " << bytes_sent << std::endl;
-        std::cout << "type: " << pkt.type;
-        std::cout << "\nseqn: " << pkt.seqn;
-        std::cout << "\ntotal_size: " << pkt.total_size;
-        std::cout << "\npayload_size: " << pkt.length << std::endl;*/
 
         //------------------------------------------------------------------------
         // SEND PAYLOAD
@@ -271,17 +248,12 @@ void Communication_client::send_file(std::string filename, std::string path){
 	        bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
-        //std::cout << "PACKET!\n";
-        //std::cout << "\npayload(char*): ";
-        //printf("%.*s\n", payload_size, pkt._payload);
-        //std::cout << "bytes sent: " << bytes_sent << std::endl;
     }
 	free(file_buffer);
 	fclose(fp);
 }
 
 void Communication_client::send_mtime(time_t mtime) {
-    //std::cout << "\nENTROU NA SEND_MTIME";
     const char* payload = (char*)&mtime;
     int n;
 
@@ -292,7 +264,6 @@ void Communication_client::send_mtime(time_t mtime) {
     pkt.total_size = 1;
     pkt.length = sizeof(time_t);
 	pkt._payload = payload;
-    //std::cout << "\n\nfilename: " << pkt._payload << std::endl;
 
 	// copy pkt to buffer
 	buffer = (char*)&pkt;
@@ -307,7 +278,6 @@ void Communication_client::send_mtime(time_t mtime) {
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
-    //std::cout << "bytes sent: " << bytes_sent << std::endl;
 
     //send payload
 	// write in the socket
@@ -319,7 +289,6 @@ void Communication_client::send_mtime(time_t mtime) {
 		    printf("ERROR writing to socket\n");
 		bytes_sent += n;
     }
-    //std::cout << "bytes sent: " << bytes_sent << std::endl;
 }
 
 // The type variable defines the type of output:
@@ -328,33 +297,45 @@ void Communication_client::send_mtime(time_t mtime) {
 // 2 -> mtime (time_t)
 // Since time_t is a signed integer that can be 32 or 64 bits long (depending on
 //the system), we return a long int (64 bits signed integer)
-long int Communication_client::receive_payload(struct packet *pkt, int type) {
-    //std::cout << "\nENTREI NO RECEIVE_PAYLOAD\n\n";
-    receive_header(pkt);
-    //std::cout << "Saiu do header\n";
-    //std::cout << "pkt->length: " << pkt->length;
-    //std::cout << "\nVai entrar no while do receive_payload";
+long int Communication_client::receive_payload(struct packet *pkt, int type, int timeout_sec) {
+    receive_header(pkt, timeout_sec);
+	// Check if timed out
+	if(pkt->type == 10)
+		return -10;
+
+	bool timedout = false;
+	if(timeout_sec != 0){
+		// Set up the timeout
+		fd_set input;
+		FD_ZERO(&input);
+		FD_SET(sockfd, &input);
+		struct timeval timeout;
+		timeout.tv_sec = 10;
+		timeout.tv_usec = 0;
+		int n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+	}
+
     int bytes_received = 0;
-    while(bytes_received < pkt->length)
+    while(bytes_received < pkt->length && !timedout)
     {
         // read from the socket
         int n = read(sockfd, &buffer[bytes_received], pkt->length - bytes_received);
-        if (n < 0)
-            printf("ERROR reading from socket");
-
-        bytes_received+=n;
-        //std::cout << "\nEstou no while do receive_payload";
-		//std::cout << "\nbytes lidos: " << bytes_received << std::endl;
-        //std::cout << "\npkt lenght: " << pkt->length;
+        if (n<0 && timeout_sec>0) {
+			timedout = true;
+        }
+		else if(n>0)
+        	bytes_received+=n;
 	}
-    //std::cout << "\nbytes lidos: " << bytes_received;
 	pkt->_payload = (const char*)buffer;
+	if(timedout){
+		std::cout << std::endl << "TIMEOUT NO RECEIVE_PAYLOAD!";
+		pkt->type = 10;
+	}
 	switch (type)
 	{
 		case 1:{
 	        int command;
 	        memcpy(&command, pkt->_payload, pkt->length);
-	        //cout << command;
 	        return command;
 		}
 		case 2:{
@@ -366,63 +347,49 @@ long int Communication_client::receive_payload(struct packet *pkt, int type) {
 	}
 }
 
-void Communication_client::receive_header(struct packet *_header) {
-    buffer = (char*)buffer_address;
-    //bzero(buffer, header_size);
-    //std::cout << "\n\nENTREI NO RECEIVE_HEADER\n\n";
-	int bytes_received=0;
-	//cout << "\n\nbytes lidos: "<<bytes_received;
-    while(bytes_received < header_size)
-    {
-        //std::cout << "\nheader size: " << header_size;
-        //std::cout << "\nBYTES_LIDOS ANTES DO READ: " << bytes_received;
-        //int n = read(sockfd, buffer, header_size);
-        int n = read(sockfd, &buffer[bytes_received], header_size - bytes_received);
-        //std::cout << "\nBYTES_LIDOS DEPOIS DO READ: " << bytes_received;
-        //cout << "\nN DEPOIS DO READ: " << n;
-        if (n < 0) {
-            printf("ERROR reading from socket");
-        }
+void Communication_client::receive_header(struct packet *_header, int timeout_sec) {
+	bool timedout = false;
+	if(timeout_sec != 0){
+		// Set up the timeout
+		fd_set input;
+		FD_ZERO(&input);
+		FD_SET(sockfd, &input);
+		struct timeval timeout;
+		timeout.tv_sec = 10;
+		timeout.tv_usec = 0;
+		int n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+	}
 
-        bytes_received+=n;
-		//std::cout << "\nbytes lidos: " << bytes_received;
-        //std::cout << "\nheader size: " << header_size;
+    buffer = (char*)buffer_address;
+	int bytes_received=0;
+    while(bytes_received < header_size && !timedout)
+    {
+        int n = read(sockfd, buffer, header_size - bytes_received);
+        if (n<0 && timeout_sec>0) {
+			timedout = true;
+        }
+		else if(n>0)
+        	bytes_received+=n;
+	}
+	if(timedout){
+		std::cout << std::endl << "TIMEOUT NO RECEIVE_HEADER!";
+		_header->type = 10;
 	}
 	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
 	{
-	    //cout << "\nKAPOW!\n";
-        //cout << "buffer[0]: " << buffer[0] << endl;
-        //cout << "buffer[1]: " << buffer[1] << endl;
-	    // Bytes from buffer[4] to buffer[7] are the size of _payload
 	    memcpy(&_header->type, &buffer[0], 2);
 	    memcpy(&_header->seqn, &buffer[2], 2);
 	    memcpy(&_header->total_size, &buffer[4], 4);
 	    memcpy(&_header->length, &buffer[8], 2);
-	    /*std::cout << "\ntype: " << _header->type;
-	    std::cout << "\nseqn: " << _header->seqn;
-	    std::cout << "\ntotal_size: " << _header->total_size;
-	    std::cout << "\npayload_size: " << _header->length << std::endl;*/
     }
-    //std::cout << "\nSaindo do receive_header\n";
-/*
-    std::cout << "\nSai do while do receive_header";
-    // Bytes from buffer[4] to buffer[7] are the size of _payload
-	struct packet* header;
-	header = (packet*)malloc(header_size);
-	memcpy(&header->type, &buffer[0], 2);
-	memcpy(&header->seqn, &buffer[2], 2);
-	memcpy(&header->total_size, &buffer[4], 4);
-	memcpy(&header->length, &buffer[8], 2);
-	std::cout << "\ntype: " << header->type;
-	std::cout << "\nseqn: " << header->seqn;
-	std::cout << "\ntotal_size: " << header->total_size;
-	std::cout << "\npayload_size: " << header->length << std::endl;
-*/
 }
 
-int Communication_client::receive_int() {
+int Communication_client::receive_int(int timeout_sec) {
     packet pkt;
-    return receive_payload(&pkt, 1);
+    int return_value = receive_payload(&pkt, 1, timeout_sec);
+	if(pkt.type == 10)
+		return -10;
+	return return_value;
 }
 
 void Communication_client::receive_file(std::string path) {
@@ -432,32 +399,25 @@ void Communication_client::receive_file(std::string path) {
 
 
     struct packet pkt;
-    receive_payload(&pkt, 0);
+    receive_payload(&pkt, 0, 0);
     uint32_t total_size = pkt.total_size;
-    //std::cout << "pkt total size: " << pkt.total_size;
-    //std::cout << "\n\nTHE CLIENT WILL RECEIVE " << total_size << " PACKETS!\n";
 
     // Write the first payload to the file
     ssize_t bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
-    //std::cout << "\nComecei a escrever no file pqp";
     if (bytes_written_to_file < pkt.length)
         std::cout << "\nERROR WRITING TO " << path << std::endl;
-
-    //std::cout << bytes_written_to_file << " bytes written to file" << std::endl;
 
     // Receive all the [total_size] packets
     // It starts at 2 because the first packet has already been received
     int i;
     for(i=2; i<=total_size; i++)
     {
-        //std::cout << "\ni: " << i << "/" << total_size;
         // Receive payload
-        receive_payload(&pkt, 0);
+        receive_payload(&pkt, 0, 0);
         // Write it to the file
         bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
         if (bytes_written_to_file < pkt.length)
             std::cout << "\nERROR WRITING TO " << path << std::endl;
-        //std::cout << "\n" << bytes_written_to_file << " bytes written to file\n";
     }
     fclose(fp);
 }
@@ -475,145 +435,48 @@ long Communication_client::get_file_size(FILE *fp) {
 
 int Communication_client::delete_file(std::string path) {
     int error = 0;
-    //std::cout << "path: " << path;
     error = remove(path.c_str());
     if(error != 0)
         std::cout << "\nError deleting file";
     return error;
 }
 
-bool Communication_client::send_command_alive(int command) {
-	int n;
-	packet pkt;
-	pkt.type = 1;
-    pkt.seqn = 0;
-    pkt.total_size = 1;
-    pkt.length = sizeof(int);
-	pkt._payload = (const char*)&command;
 
-	// send header
-	// write in the socket
-	buffer = (char*)&pkt;
-    bool timeout = false;
-    clock_t start = clock();
-	int bytes_sent = 0;
-	while (bytes_sent < header_size && !timeout)
-	{
-        // timeout
-        if(((clock()-start) / (double)CLOCKS_PER_SEC) >= 10)
-			timeout = true;
-	    n = write(sockfd, &buffer[bytes_sent], header_size - bytes_sent);
-        if (n < 0) {
-		    printf("ERROR writing to socket\n");
-        }
-		bytes_sent += n;
+bool Communication_client::check_server_command(int command){
+	bool server_alive = true;
+
+	// Lock mutex to make sure that the other thread won't execute other commands while this command is running
+	pthread_mutex_lock(&socket_mtx);
+
+	//send command upload (1)
+	server_alive = send_command(command);
+
+	if(!server_alive){
+		std::cout << std::endl << "SERVER DIED!!!";
+		// Unlock mutex
+		pthread_mutex_unlock(&socket_mtx);
+		return server_alive;
+	}
+
+    // resposta do server
+    // Receive return int
+	int int_received = receive_int(10);
+
+	if(int_received == -10){
+		std::cout << std::endl << "SERVER DEAD!";
+		server_alive = false;
+	}
+	else if(int_received > 0)
+		std::cout << std::endl << "SERVER ALIVE!";
+    else if(int_received < 0){
+        std::cout << "\nServer closed\n";
+        exit(0);
     }
-    if(timeout)
-        return false;
-    //std::cout << "bytes sent: " << bytes_sent << std::endl;
-    //send payload
-	// write in the socket
-    start = clock();
-	bytes_sent = 0;
-	while (bytes_sent < pkt.length && !timeout)
-	{
-        // timeout
-		if(((clock()-start) / (double)CLOCKS_PER_SEC) >= 10)
-			timeout = true;
-	    n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
-        if (n < 0) {
-		    printf("ERROR writing to socket\n");
-        }
-		bytes_sent += n;
-    }
-    if(timeout)
-        return false;
-    return true;
-    //std::cout << "bytes sent: " << bytes_sent << std::endl;
-}
 
-long int Communication_client::receive_payload_alive(struct packet *pkt, int type) {
-    bool isAlive = receive_header_alive(pkt);
-	if (!isAlive) {
-		return -1;
-	}
-    int bytes_received = 0;
-	bool timeout = false;
-	clock_t start = clock();
-    while(bytes_received < pkt->length)
-    {
-		if(((clock()-start) / (double)CLOCKS_PER_SEC) >= 10)
-			timeout = true;
-        // read from the socket
-        int n = read(sockfd, &buffer[bytes_received], pkt->length - bytes_received);
-        if (n < 0)
-            printf("ERROR reading from socket");
+	// Unlock mutex
+	pthread_mutex_unlock(&socket_mtx);
 
-        bytes_received+=n;
-	}
-	if(timeout)
-	{
-		return -1;
-	}
-	pkt->_payload = (const char*)buffer;
-
-	switch (type)
-	{
-		case 1:{
-	        int command;
-	        memcpy(&command, pkt->_payload, pkt->length);
-	        return command;
-		}
-		case 2:{
-			time_t mtime= *(time_t*)pkt->_payload;
-			return mtime;
-		}
-		default:
-			return 0;
-	}
-}
-
-bool Communication_client::receive_header_alive(struct packet *_header) {
-    buffer = (char*)buffer_address;
-	int bytes_received=0;
-	bool timeout = false;
-	clock_t start = clock();
-    while(bytes_received < header_size)
-    {
-		if(((clock()-start) / (double)CLOCKS_PER_SEC) >= 10)
-			timeout = true;
-        int n = read(sockfd, buffer, header_size - bytes_received);
-        if (n < 0) {
-            printf("ERROR reading from socket");
-        }
-
-        bytes_received+=n;
-	}
-	if(timeout) {
-		return false;
-	}
-	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
-	{
-	    memcpy(&_header->type, &buffer[0], 2);
-	    memcpy(&_header->seqn, &buffer[2], 2);
-	    memcpy(&_header->total_size, &buffer[4], 4);
-	    memcpy(&_header->length, &buffer[8], 2);
-    }
-	return true;
-}
-
-void Communication_client::check_server() {
-    std::cout << "\nENTREI NA CHECK_SERVER\n";
-    send_command(10);
-	int isAlive = receive_int();
-	//packet pkt;
-	//int isAlive = receive_payload_alive(&pkt, 1);
-
-    /*if(isAlive < 0)
-        std::cout << "IT'S DEAD!!!\n";
-    else
-        std::cout << "IT'S ALIVE!!!\n";
-	std::cout << "hora de ir embora\n";*/
+	return server_alive;
 }
 
 void Communication_client::upload_command(int command, std::string filename, std::string path, time_t mtime) {
@@ -625,7 +488,7 @@ void Communication_client::upload_command(int command, std::string filename, std
 
     // resposta do server
     // Receive return int
-    if(receive_int() < 0){
+    if(receive_int(0) < 0){
         std::cout << "\nServer closed\n";
         exit(0);
     }
@@ -644,9 +507,6 @@ void Communication_client::upload_command(int command, std::string filename, std
 }
 
 void Communication_client::download_command(int command, std::string filename, std::string path, Client::file *download_file) {
-	//std::cout << "\nENTREI NA DOWNLOAD_COMMAND";
-    //std::cout << "\nfilename recebido: " << filename;
-    //std::cout << "\npath recebido: " << path;
 
 	// Lock mutex to make sure that the other thread won't execute other commands while this command is running
 	pthread_mutex_lock(&socket_mtx);
@@ -656,7 +516,7 @@ void Communication_client::download_command(int command, std::string filename, s
 
     // resposta do server se já fechou ou não
     // Receive return int
-    if(receive_int() < 0){
+    if(receive_int(0) < 0){
         // se o server fechou não aceita mais nenhum comando do client que não seja o exit
         std::cout << "\nServer closed\n";
         exit(0);
@@ -665,20 +525,17 @@ void Communication_client::download_command(int command, std::string filename, s
 	// send filename
 	send_filename(filename);
 
-    if(receive_int() < 0){
+    if(receive_int(0) < 0){
         // se entrar aqui é porque o file não existe no server, logo não tem o que ser baixado
         std::cout << "\nFile doesn't exist at server.\n";
         download_file->mtime = -1;
     }
 	else{
-	    //std::cout << "\nNão devia mas veio mesmo assim ué";
 		// receive mtime
 	    struct packet pkt;
-		time_t mtime = receive_payload(&pkt, 2);
+		time_t mtime = receive_payload(&pkt, 2, 0);
 
 		// receive file
-		//std::string full_path = path+"/"+filename;
-		//std::cout << "\n\nDOWNLOAD_COMMAND FULL PATH: " << full_path << "\n\n";
 		receive_file(path);
 
 		download_file->name = filename;
@@ -701,16 +558,12 @@ void Communication_client::delete_command(int command, std::string filename, std
 
     // resposta do server
     // Receive return int
-    if(receive_int() < 0){
+    if(receive_int(0) < 0){
         std::cout << "\nServer closed\n";
         exit(0);
     }
 
     send_filename(filename);
-
-    //path = path + '/' + filename;
-    //std::cout << "\ndelete path: " << path;
-    //delete_file(path);
 
 	// Unlock mutex
 	pthread_mutex_unlock(&socket_mtx);
@@ -723,13 +576,13 @@ void Communication_client::list_server_command(int command) {
     send_command(command);
 
     // Receive return int
-    if(receive_int() < 0){
+    if(receive_int(0) < 0){
         std::cout << "\nServer closed\n";
         exit(0);
     }
 
     struct packet pkt;
-    receive_payload(&pkt, 0);
+    receive_payload(&pkt, 0, 0);
 	std::string ls = pkt._payload;
 	ls.resize(pkt.length);
 
@@ -748,16 +601,14 @@ void Communication_client::get_sync_dir(int command, std::vector<Client::file> *
     send_command(command);
 
     // recebe se o server fechou
-    if(receive_int() < 0){
+    if(receive_int(0) < 0){
         std::cout << "\nServer closed\n";
         exit(0);
     }
 
     //recebe o numero de arquivos do server
     packet pkt;
-	int num_server_files = receive_payload(&pkt, 1);
-
-	//std::cout << "\nFILES ON SERVER (contando os que foram deletados): " << num_server_files << "\n\n";
+	int num_server_files = receive_payload(&pkt, 1, 0);
 
 	std::vector<std::string> file_names;
 	std::vector<time_t> mtimes;
@@ -765,18 +616,16 @@ void Communication_client::get_sync_dir(int command, std::vector<Client::file> *
     for(int i = 1; i <= num_server_files; i++) {
 
         // recebe o filename
-        receive_payload(&pkt, 0);
+        receive_payload(&pkt, 0, 0);
         std::string server_filename = pkt._payload;
 		server_filename.resize(pkt.length);
 
 		file_names. push_back(server_filename);
 
         // recebe o mtime
-        time_t server_mtime = receive_payload(&pkt, 2);
+        time_t server_mtime = receive_payload(&pkt, 2, 0);
 
 		mtimes.push_back(server_mtime);
-
-		//std::cout << "\nserver filename: \'" << server_filename << "\'" << std::endl << "server mtime: " << server_mtime << std::endl;
 	}
 	// Unlock the mutex (The interaction with the server for this command ends here. Now it will execute other commands).
 	pthread_mutex_unlock(&socket_mtx);
@@ -793,9 +642,7 @@ void Communication_client::get_sync_dir(int command, std::vector<Client::file> *
         // percorre a watched_files pra achar as inconsistências entre os arquivos no servidor e no client
 		for(int j = 0; j < watched_files_size && !found; j++){
             // se acha o arquivo da server na watched_files
-			//std::cout << "i: " << i << "\ncomparando com: filename: \'" << (*watched_files)[j].name << "\'" << std::endl << "mtime: " << (*watched_files)[j].mtime << std::endl;
             if((*watched_files)[j].name == server_filename){
-				//std::cout << "\nACHOU FILENAME!\n";
 				found = 1;
 				pos = j;
 				break;
@@ -805,34 +652,32 @@ void Communication_client::get_sync_dir(int command, std::vector<Client::file> *
 			// found = 1
 	        if(server_mtime < 0){
 	            // se o arquivo foi deletado no servidor, vai ser deletado no cliente
-				std::cout << "\n(get_sync_dir) file " << complete_path << "will be deleted\n";
+				//std::cout << "\n(get_sync_dir) file " << complete_path << "will be deleted\n";
 	            delete_file(complete_path);
 				(*watched_files)[pos].mtime = -2; // sinaliza que deve ser removido
-	            //remove_from_watched_files(server_filename, watched_files);
 			  // Se mtime é -1, o arquivo deve ser deletado no servidor
 	        } else if((*watched_files)[pos].mtime != -1) {
 	            double seconds = difftime(server_mtime, (*watched_files)[pos].mtime);
 	            if(seconds > 0) { // Se a versão do server é mais nova
-					std::cout << "\n(get_sync_dir) file " << complete_path << " will be downloaded (server version is more recent)\n";
+					//std::cout << "\n(get_sync_dir) file " << complete_path << " will be downloaded (server version is more recent)\n";
 					download_command(2, server_filename, complete_path, &download_file);
 					// Update mtime
 					(*watched_files)[pos].mtime = download_file.mtime;
 	                (*watched_files)[pos].local_mtime = download_file.local_mtime;
 	            }
 	            if (seconds < 0) { // Se a versão do client é mais nova
-					std::cout << "\n(get_sync_dir) file " << complete_path << " will be uploaded (client version is more recent)\n";
+					//std::cout << "\n(get_sync_dir) file " << complete_path << " will be uploaded (client version is more recent)\n";
 	                upload_command(1, server_filename, path, (*watched_files)[pos].mtime);
 	            }
 	        } else { // Se mtime do client é -1
-				std::cout << "\n(get_sync_dir) file " << complete_path << " will be deleted on the server)\n";
+				//std::cout << "\n(get_sync_dir) file " << complete_path << " will be deleted on the server)\n";
 				delete_command(3, server_filename, path);
 				(*watched_files)[pos].mtime = -2; // sinaliza que deve ser removido
-	            //remove_from_watched_files(server_filename, watched_files);
 			}
 	    }
 		else if (server_mtime != -1){
             // found = 0
-			std::cout << "\n(get_sync_dir) file " << complete_path << " will be downloaded (client doesn't have file)\n";
+			//std::cout << "\n(get_sync_dir) file " << complete_path << " will be downloaded (client doesn't have file)\n";
             download_command(2, server_filename, complete_path, &download_file);
             watched_files->push_back(download_file);
         }
@@ -845,7 +690,7 @@ void Communication_client::get_sync_dir(int command, std::vector<Client::file> *
 			(*watched_files)[i].mtime = (*watched_files)[i].local_mtime;
 			std::string complete_path = path + '/' + (*watched_files)[i].name;
 			// Envia
-			std::cout << "\n(get_sync_dir) file " << complete_path << " will be uploaded (server doesn't have file)\n";
+			//std::cout << "\n(get_sync_dir) file " << complete_path << " will be uploaded (server doesn't have file)\n";
 			upload_command(1, (*watched_files)[i].name, path, (*watched_files)[i].mtime);
 		}
 		// Se o arquivo deve ser removido
@@ -861,7 +706,6 @@ void Communication_client::remove_from_watched_files(std::string filename, std::
     for(int i=0; i < watched_files->size(); i++)
     {
         if(filename == (*watched_files)[i].name)
-            //std::cout << "\n\nwatched_file: "<< watched_files[i].name << "\tfilename: " << filename;
             watched_files->erase(watched_files->begin()+i);
     }
 }
@@ -873,7 +717,7 @@ void Communication_client::exit_command(int command) {
     send_command(7);
 
     // Receive return int
-    if(receive_int() < 0){
+    if(receive_int(0) < 0){
         std::cout << "\nServer closed\n";
     }
 	// Unlock mutex

@@ -48,6 +48,6 @@ int main(int argc, char **argv)
 cout << "\n\nhost: " << host << "\nport: " << port << "\n\n";
 
 	// Start the server
-	Synchronization_server server(4014, 4012, host, port);
+	Synchronization_server server(5000, 5001, host, port);
 	return 0;
 }

@@ -10,10 +10,8 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sstream>
-/* #include <boost/filesystem.hpp>
-using namespace boost::filesystem;
+#include <signal.h>
 
-g++ -o client client.cpp -lboost_system -> comando para boost funcionar */
 Communication_client communication;
 
 bool running;
@@ -114,8 +112,7 @@ void Client::check_files() {
 
                     // Checks if file was changed
                     if(difftime(this->watched_files[n].local_mtime, fileattrib.st_mtime)) {
-                        std::cout << "\n\nthe file " << d_struct->d_name << " has changed!\n It should be uploaded!\n";
-                        //std::cout << "\ntime changed: "
+                        //std::cout << "\n\nthe file " << d_struct->d_name << " has changed!\n It should be uploaded!\n";
                         this->watched_files[n].local_mtime = fileattrib.st_mtime;
                         this->watched_files[n].mtime = fileattrib.st_mtime;
                     }
@@ -123,7 +120,7 @@ void Client::check_files() {
             }
             // If file isn't found, then it has been deleted
             if(!found) {
-                std::cout << "\n\nthe file " << this->watched_files[n].name << " has been deleted!\n It should be deleted on the server!\n";
+                //std::cout << "\n\nthe file " << this->watched_files[n].name << " has been deleted!\n It should be deleted on the server!\n";
                 this->watched_files[n].mtime = -1;
             }
             // Reset the position of the directory stream
@@ -148,7 +145,7 @@ void Client::check_files() {
                     }
                 }
                 if(!found) {
-                    std::cout << "\n\nthe file " << d_struct->d_name << " is new!\n It should be uploaded!\n";
+                    //std::cout << "\n\nthe file " << d_struct->d_name << " is new!\n It should be uploaded!\n";
 
                     // Start watching file
                     std::string file_ = this->dir + "/" + d_struct->d_name;
@@ -190,10 +187,6 @@ void Client::check_files() {
                 newFile.local_mtime = fileattrib.st_mtime;
                 newFile.mtime = 0;
                 this->watched_files.push_back(newFile);
-                std::cout << "\nwatched_files[0].name: " << watched_files[0].name;
-                std::cout << "\nwatched_files[0].mtime: " << watched_files[0].mtime;
-
-                std::cout << "\n\nthe file " << d_struct->d_name << " is new!\n It should be uploaded!\n";
             }
         }
         closedir(dir);
@@ -201,20 +194,28 @@ void Client::check_files() {
 }
 
 void *Client::check_files_loop() {
+    signal(SIGPIPE, SIG_IGN);
     // enquanto a thread está aberta
     while(running) {
-        // std::cout << "Entrando no loop\n";
-        // communication.check_server();
-        // std::cout << "SAI DA CHECK_SERVER\n";
+        std::cout << "\n\nchecando server...";
+        bool server_alive = communication.check_server_command(10);
+        std::cout << std::endl << "server_alive: " << server_alive;
+
+        if(!server_alive)
+            exit(0);
+
+        std::cout << "\nchecando arquivos!";
         check_files();
-        // std::cout << "SAI DA CHECK FILES\n";
+
+        std::cout << "\nget_sync_dir!";
         communication.get_sync_dir(6, &watched_files, this->dir);
-        // std::cout << "SAI DA GET SYNC DIR\n";
+
         pthread_mutex_lock(&watched_files_copy_mtx);
         watched_files_copy = watched_files;
         pthread_mutex_unlock(&watched_files_copy_mtx);
-        // std::cout << "Saindo do loop\n";
-        sleep(5);
+
+        std::cout << "\nzZZ!";
+        sleep(10);
     }
     communication.close_socket();
 }
@@ -224,9 +225,6 @@ void *Client::check_files_helper(void* context) {
 }
 
 void Client::copy_file(std::string original_path, std::string copy_path) {
-    std::cout << "\nOriginal Path: " << original_path;
-    std::cout << "\nCopy Path: " << copy_path;
-
     std::ifstream  src(original_path.c_str(), std::ios::binary);
     std::ofstream  dst(copy_path.c_str(),   std::ios::binary);
 
@@ -234,8 +232,6 @@ void Client::copy_file(std::string original_path, std::string copy_path) {
 }
 
 bool Client::file_exists(std::string path, std::string filename) {
-    //std::cout << "\nvai verificar se o file existe";
-   // std::cout << "\npath na file_exists: " << path;
     DIR *fileDir;
     struct dirent *lsdir;
     fileDir= opendir(path.c_str());
@@ -243,23 +239,18 @@ bool Client::file_exists(std::string path, std::string filename) {
     while ((lsdir = readdir(fileDir)) != NULL)
     {
         if(lsdir->d_name[0] != '.') { // Ignora . e ..
-            //std::cout << "\nNome do arquivo do diretório: " << lsdir->d_name;
             if(lsdir->d_name == filename) {
                 printf("%s\n", lsdir->d_name);
                 return true;
             }
         }
     }
-    //std::cout << "\nNão achou";
     return false;
 }
 
 void Client::get_sync_dir_client() {
     // cria o diretorio
     createSyncDir();
-
-    // inicializa as atividades de sincronização
-    //communication.get_sync_dir(6, watched_files, this->dir);
 }
 
 // Pretendo mudar pra outra classe tipo um Folder ou Util
@@ -268,8 +259,6 @@ std::string Client::createSyncDir() {
     const char *homedir = getenv("HOME");
     std::string syncdir = "/sync_dir_" + getUsername();
     std::string dir = std::string(homedir) + syncdir;
-    //std::string print;
-    //std::cout << print << path;
 
 	const char* folder = dir.c_str();
     struct stat info;
@@ -287,7 +276,6 @@ void Client::remove_from_watched_files(std::string filename) {
     for(int i=0; i < watched_files.size(); i++)
     {
         if(filename == watched_files[i].name)
-            //std::cout << "\n\nwatched_file: "<< watched_files[i].name << "\tfilename: " << filename;
             watched_files.erase(watched_files.begin()+i);
     }
 }
@@ -313,37 +301,21 @@ void Client::userInterface() {
         input = input.substr(input.find(" ") + 1, input.length());
 
         if(command == "upload") {
-            std::cout << "Upload " << input << "\n";
-
             std::string filename = input.substr(input.find_last_of("\\/")+1, input.length());
             // nesse caso o input é o path!
             input = input.substr(0, input.find_last_of("\\/"));
-            std::cout << "\n!!!filename: " << filename << std::endl;
-            std::cout << "!!!path: " << input << std::endl;
 
             bool fileExists = file_exists(input, filename);
             if(fileExists) {
                 std::string original_path = input + '/' + filename;
                 std::string copy_path = this->dir + '/' + filename;
                 copy_file(original_path, copy_path);
-
-                /* DEPENDENDO DA PRA VER SE COLOCA NA WATCHED_FILES OU DEIXA PRA CHECK_FILES FAZER ISSO */
-
-                //std::cout << "\nVou entrar na mtime!";
-                //time_t mtime = get_mtime(input);
-                //std::cout << "\nmtime: " << mtime << "\n";
-                //communication.upload_command(1, filename, input, mtime);
-                //std::cout << "\nEnviou!\n";
             } else {
                 std::cout << "\nNão foi possível enviar o arquivo porque ele não existe.\n";
             }
         }
         else if(command == "download") {
-            std::cout << "\nDownload " << input << "\n";
-			//std::string path = getenv("HOME");
 			std::string path = this->download_path + '/' + input;
-			//path = path + '/' + input;
-			std::cout << "\npath: " << path;
             file downloadFile;
             communication.download_command(2, input, path, &downloadFile);
 
@@ -353,24 +325,15 @@ void Client::userInterface() {
             // metodo pra download
         }
         else if(command == "delete") {
-            std::cout << "\nDelete " << input << "\n";
             bool fileExists = file_exists(this->dir, input);
             if(fileExists) {
-                /* do novo jeito a ideia é  deletar o arquivo do file e aí a check_files (?) que vai verificar que tem arquivo deletado e envia o comando*/
-                //communication.delete_file(input);
                 std::string path = this->dir + '/' + input;
-                //std::cout << "\n!!!!DELETANDO O ARQUIVOOO: " << path;
                 communication.delete_file(path);
-                //communication.delete_command(3, input, this->dir);
-                // removeu da pasta, agora remove dos watched files
-                // precisa indicar que vai ser deletado no server, então não pode deletar
-                //remove_from_watched_files(input);
             } else {
                 std::cout << "\nNão foi possível deletar o arquivo porque ele não existe.\n";
             }
         }
         else if(command == "list_server") {
-            //std::cout << "List Server \n";
             communication.list_server_command(4);
             // metodo pra list_server
         }
@@ -393,14 +356,12 @@ void Client::userInterface() {
         	pthread_mutex_unlock(&watched_files_copy_mtx);
 
             if(ls.str() != "")
-        	   std::cout << std::endl << ls.str();
+        	   std::cout << std::endl << ls.str() << std::endl;
             else
                 std::cout << "\n\nThe folder is empty\n";
         }
         else if(command == "get_sync_dir") {
-            std::cout << "Get Sync Dir \n";
             get_sync_dir_client();
-            //communication.send_command(6);
             // metodo pra get_sync_dir
         }
         else if(command == "exit") {
@@ -415,12 +376,6 @@ void Client::userInterface() {
         }
     }
 }
-
-/*
-Communication_client* Client::getCommunication() {
-    return &communication;
-}
-*/
 
 
 int main(int argc, char **argv) {
@@ -437,13 +392,10 @@ int main(int argc, char **argv) {
 	char cwd[1024];
     getcwd(cwd, sizeof(cwd));
 	std::string s_cwd = cwd;
-	std::cout << "\ns_cwd " << s_cwd;
 
 	Client client = Client(username, host, port, s_cwd);
 
 	/*** CONEXÃO COM O SERVIDOR ***/
-    // Voltar pra essa questão de communication ser um argumento de client:
-	// bool connected = client.communication.connect_client_server(client);
 	bool connected = communication.connect_client_server(client);
 
     if(!connected) {
@@ -458,10 +410,6 @@ int main(int argc, char **argv) {
     // Cria diretório de sincronização
     std::string dir = client.createSyncDir();
 	client.setDir(dir);
-
-    /*** SINCRONIZAÇÃO COM O SERVIDOR ***/
-    // Aqui verifica se já existe o diretório, se não existe então cria
-    //client.syncClient();
 
     /* Inicializa thread de sincronização*/
     pthread_create(client.getCheckFilesThread(), NULL, &Client::check_files_helper, &client);

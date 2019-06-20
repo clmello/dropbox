@@ -41,22 +41,18 @@ public:
 
 	Communication_client();
 	bool connect_client_server(Client client);
-	void send_command(int command);
+	bool send_command(int command);
 	void send_filename(std::string filename);
 	void send_file(std::string filename, std::string path);
 	void send_mtime(time_t mtime);
- 	void receive_header(struct packet *_header);
-	long int receive_payload(struct packet *pkt, int type);
+ 	void receive_header(struct packet *_header, int timeout_sec);
+	long int receive_payload(struct packet *pkt, int type, int timeout_sec);
 	void receive_file(std::string path);
-	int receive_int();
+	int receive_int(int timeout_sec);
 	long get_file_size(FILE *fp);
 	int delete_file(std::string path);
 
-	bool send_command_alive(int command);
-	long int receive_payload_alive(struct packet *pkt, int type);
-	bool receive_header_alive(struct packet *_header);
-	void check_server();
-
+	bool check_server_command(int command);
 	void upload_command(int command, std::string filename, std::string path, time_t mtime);
 	void download_command(int command, std::string filename, std::string path, Client::file *download_file);
 	void delete_command(int command, std::string filename, std::string path);

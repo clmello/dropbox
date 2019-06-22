@@ -7,6 +7,7 @@ UTILS_SERVER = 	Communication_server.o \
 				connected_backup.o \
 				Synchronization_server.o \
 				File_server.o \
+				backup.o \
 
 UTILS_CLIENT = Communication_client.o \
 

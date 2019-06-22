@@ -37,6 +37,10 @@ struct th_args{
 	int* thread_finished = NULL;
 	vector<File_server> *user_files = NULL;
 	pthread_mutex_t *user_files_mutex = NULL;
+	vector<int> *backup_sockets = NULL;
+	vector<pthread_mutex_t> *backup_mutexes = NULL;
+	pthread_mutex_t *r_w_backups_mutex = NULL;
+	vector<int> *r_w_backups = NULL;
 };
 
 
@@ -68,20 +72,10 @@ class Communication_server
 		int header_size;
 		int max_payload;
 		int packet_size;
-		// TODO: tirar tudo isso. Usar o vetor de server_files passado por args
-		//struct file{time_t mtime; string name;};
-		//vector<file> watched_files;
 
 		void *accept_connections();
-		void *receive_commands(int sockfd, string username, int *thread_finished, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
+		void *receive_commands(int sockfd, string username, int *thread_finished, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex, vector<int> *backup_sockets, vector<pthread_mutex_t> *backup_mutexes, pthread_mutex_t *r_w_backups_mutex, vector<int> *r_w_backups);
 
-		//TODO: vai ter que tirar tudo isso
-		//bool file_is_watched(string filename);
-		//void update_watched_file(string filename, time_t mtime);
-		//time_t get_mtime(string filename);
-		//void remove_watched_file(string filename);
-
-		//pthread_mutex_t *get_file_mutex(vector<File_server> *user_files, string path, pthread_mutex_t *user_files_mutex);
 		void update_user_file(string path, time_t mtime, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
         int start_reading_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
         void done_reading_file(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
@@ -91,6 +85,8 @@ class Communication_server
 		bool file_exists(string path, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
 		string get_files_and_mtime(vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
 		time_t get_mtime(string filename, string username, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
+		void lock_rw_mutex(pthread_mutex_t *r_w_backups_mutex, vector<int> *r_w_backups);
+		void unlock_rw_mutex(pthread_mutex_t *r_w_backups_mutex, vector<int> *r_w_backups);
 
 };
 

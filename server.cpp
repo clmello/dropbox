@@ -1,5 +1,6 @@
 #include "Communication_server.h"
 #include "Synchronization_server.h"
+#include "backup.h"
 #include <signal.h>
 #include <unistd.h>
 
@@ -47,7 +48,19 @@ int main(int argc, char **argv)
 
 cout << "\n\nhost: " << host << "\nport: " << port << "\n\n";
 
-	// Start the server
-	Synchronization_server server(5000, 5001, host, port);
+	if(host=="")
+	{
+		// Start the server
+		cout << "\n\nmain server\n\n";
+		Synchronization_server server;
+		server.Init(5004, 5005);
+	}
+	else
+	{
+		// Start the backup
+		cout << "\n\nbackup server\n\n";
+		Backup backup(host, port);
+	}
+
 	return 0;
 }

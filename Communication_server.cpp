@@ -109,7 +109,7 @@ long int Communication_server::receive_payload(int sockfd, struct packet *pkt, i
 	return 0;*/
 }
 
-void *Communication_server::receive_commands(int sockfd, string username, int *thread_finished, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)//, vector<Connected_client> *connected_clients)
+void *Communication_server::receive_commands(int sockfd, string username, int *thread_finished, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex, vector<int> *backup_sockets, vector<pthread_mutex_t> *backup_mutexes, pthread_mutex_t *r_w_backups_mutex, vector<int> *r_w_backups)
 {
     bool close_thread = false;
 	//printf("\n\nENDERECO DO USER_FILES: %p\n\n", user_files);
@@ -157,13 +157,6 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 
                 // Receive mtime
                 time_t mtime = receive_payload(sockfd, &pkt, 2);
-                //cout << "mtime: " << mtime << endl;
-
-				//TODO: Pede para escrever no arquivo (mutex)
-				//TODO: O vetor de mtimes pode ser deletado. Cada arquivo vai ter seu mtime
-				//no objeto File_server
-
-                //update_watched_file(filename, mtime);
 
 				// This function locks the file mutex as a writer
 				start_writing_file(path, user_files, user_files_mutex, mtime);
@@ -171,9 +164,34 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 // Receive the file
                 receive_file(sockfd, path);
 
-				//TODO: Libera escrita no arquivo
 				// This function unlocks the mutex as a writer
 				done_writing_file(path, user_files, user_files_mutex);
+
+				//--------------------------------------------------------------
+				// Backups
+				//--------------------------------------------------------------
+				// Send file to backups
+				// We need to guarantee that no new backups will connect while
+				//the next for executes
+				lock_rw_mutex(r_w_backups_mutex, r_w_backups);
+				cout << endl << "sending file to " << backup_mutexes->size() << "backups";
+				cout << endl << "backup_sockets[0]: " << (*backup_sockets)[0] << endl << endl;
+				// Send file to all backups
+				for(int i=0; i<backup_mutexes->size(); i++)
+				{
+					// Send command
+					send_int((*backup_sockets)[i], 1);
+					// Send username
+					send_string((*backup_sockets)[i], username);
+					// Send filename
+					send_string((*backup_sockets)[i], filename);
+					// Send file
+					send_file((*backup_sockets)[i], path);
+				}
+
+				// Stop reading
+				unlock_rw_mutex(r_w_backups_mutex, r_w_backups);
+				//--------------------------------------------------------------
 
                 break;
             }
@@ -242,16 +260,35 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 				}
 
                 delete_file(path);
-                //remove_watched_file(filename);
-				//TODO: libera escrita do arquivo? acho que sim, mas depois
-				//remove o objeto File_server do vetor de File_server
-				//TODO: Na real não. O arquivo vai continuar no vetor, mas seta mtime pra -1
-				//Quando um outro client pedir get_sync_dir, vai ver que é -1 e saber que precisa
-				//deletar o arquivo
 				// Remove file from the user_files vector
 				remove_file(path, user_files, user_files_mutex);
 				// This function unlocks the mutex as a writer
 				done_writing_file(path, user_files, user_files_mutex);
+
+				//--------------------------------------------------------------
+				// Backups
+				//--------------------------------------------------------------
+				// Delete file on backups
+				// We need to guarantee that no new backups will connect while
+				//the next for executes
+				lock_rw_mutex(r_w_backups_mutex, r_w_backups);
+
+				cout << endl << "deleting file on " << backup_mutexes->size() << "backups";
+				cout << endl << "backup_sockets[0]: " << (*backup_sockets)[0] << endl << endl;
+				// Send command to all backups
+				for(int i=0; i<backup_mutexes->size(); i++)
+				{
+					// Send command
+					send_int((*backup_sockets)[i], 2);
+					// Send username
+					send_string((*backup_sockets)[i], username);
+					// Send filename
+					send_string((*backup_sockets)[i], filename);
+				}
+
+				// Stop reading
+				unlock_rw_mutex(r_w_backups_mutex, r_w_backups);
+				//--------------------------------------------------------------
 
                 break;
             }
@@ -351,7 +388,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 void *Communication_server::receive_commands_helper(void* void_args)
 {
     th_args* args = (th_args*)void_args;
-    ((Communication_server*)args->obj)->receive_commands(*args->newsockfd, *args->username, args->thread_finished, args->user_files, args->user_files_mutex);
+    ((Communication_server*)args->obj)->receive_commands(*args->newsockfd, *args->username, args->thread_finished, args->user_files, args->user_files_mutex, args->backup_sockets, args->backup_mutexes, args->r_w_backups_mutex, args->r_w_backups);
     return 0;
 }
 
@@ -1046,4 +1083,27 @@ time_t Communication_server::get_mtime(string filename, string username, vector<
 	// Unlock the mutex for editing the user_files vector
 	pthread_mutex_unlock(user_files_mutex);
 	return -1;
+}
+
+void Communication_server::lock_rw_mutex(pthread_mutex_t *r_w_backups_mutex, vector<int> *r_w_backups)
+{
+	while(true)
+	{
+		pthread_mutex_lock(r_w_backups_mutex);
+		// If no one writing, continue
+		if((*r_w_backups)[1] == 0)
+			break;
+		pthread_mutex_unlock(r_w_backups_mutex);
+	}
+	// Reading = true
+	(*r_w_backups)[0]++;
+	pthread_mutex_unlock(r_w_backups_mutex);
+}
+
+void Communication_server::unlock_rw_mutex(pthread_mutex_t *r_w_backups_mutex, vector<int> *r_w_backups)
+{
+	pthread_mutex_lock(r_w_backups_mutex);
+	// Stop reading
+	(*r_w_backups)[0]--;
+	pthread_mutex_unlock(r_w_backups_mutex);
 }

@@ -14,7 +14,7 @@ class Connected_backup{
 
 	public:
 		Connected_backup(int sockfd, int port, int header_size, int max_payload, int* server_closed);
-        void* heartbeat();
+        void heartbeat();
 
 		Communication_server com;
 

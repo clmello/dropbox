@@ -24,7 +24,7 @@ using namespace std;
 class Synchronization_server
 {
 	public:
-		Synchronization_server(int port, int backup_port, string main_ip, int main_port);
+		void Init(int port, int backup_port);
 
 	protected:
 
@@ -40,14 +40,15 @@ class Synchronization_server
 		size_t buffer_address;
 		struct packet* header;
 		size_t header_address;
-		string main_ip;
-		int main_port;
 		struct file{time_t mtime; string name;};
 		vector<file> watched_files;
 		vector<Connected_client> connected_clients;
 		vector<int*> threads_finished_address;
+		//vector<int> backup_sockets;
+		//vector<pthread_mutex_t> backup_mutexes;
+		//pthread_mutex_t r_w_backups_mutex;
+		//vector<int> r_w_backups;
 
-		int connect_backup_to_main();
 		void accept_connections();
 		void close_server();
 

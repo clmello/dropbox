@@ -16,46 +16,70 @@ Backup::Backup(string main_ip, int main_port)
 
 	cout << "\n\nhost: " << this->main_ip << "\nport: " << this->main_port << "\n\n";
 	main_sockfd = connect_backup_to_main();
+	chk_sockfd = connect_chk_server();
 
-	bool server_died = false;
-	/*while(!server_died)
+	int server_died = false;
+
+	// Create check_server thread
+	struct bkp_args args;
+	args.obj = this;
+	args.main_check_sockfd = &chk_sockfd;
+	args.server_died = &server_died;
+    pthread_create(&chk_thread, NULL, &check_server_helper, &args);
+
+	// Receive commands loop
+	receive_commands(main_sockfd, &server_died);
+	pthread_join(chk_thread, NULL);
+
+	// TODO: eleição
+
+	exit(0);
+}
+
+void *Backup::check_server_helper(void* void_args)
+{
+    bkp_args* args = (bkp_args*)void_args;
+    ((Backup*)args->obj)->check_server(args->main_check_sockfd, args->server_died);
+    return 0;
+}
+
+void Backup::check_server(int* main_check_sockfd, int *server_died)
+{
+	while(!*server_died)
 	{
 		// Receive heartbeat from main server
-		struct packet *pkt = receive_payload(main_sockfd, 10);
+		struct packet *pkt = receive_payload(*main_check_sockfd, 10);
 		// Check if timed out
-		if(pkt->type == 10)
-			server_died = true;
+		if(pkt->type == 10){
+			*server_died = true;
+			exit(0);
+		}
 		else
 		{
 			string str_buff = pkt->_payload;
 			string msg = str_buff.substr(0, pkt->length);
-
+			cout << endl << "msg: " << msg;
+			cout << endl;
 			// If server closing
 			if(msg=="kill")
-				close_backup();
+				close_backup(*main_check_sockfd);
 			else if(msg=="alive")
-				cout << "\nIT'S ALIIIIIIVE!!!!!!\n";
-			else
-				cout << endl << "Server died";
+				cout << endl << "IT'S ALIIIIIIVE!!!!!!" << endl;
 		}
-	}*/
-
-	receive_commands(main_sockfd);
-	exit(0);
-
-	// TODO: eleição
+	}
 }
 
-void Backup::close_backup()
+void Backup::close_backup(int main_check_sockfd)
 {
 	close(main_sockfd);
+	close(main_check_sockfd);
 	exit(0);
 }
 
-void Backup::receive_commands(int sockfd)
+void Backup::receive_commands(int sockfd, int *server_died)
 {
 	bool server_closing = false;
-	while(!server_closing)
+	while(!server_closing && !*server_died)
 	{
 		cout << endl << sockfd << ": waiting for command";
 		int command = receive_int(sockfd);
@@ -148,11 +172,35 @@ int Backup::connect_backup_to_main()
 	if (connect(sockfd,(struct sockaddr *) &main_addr,sizeof(main_addr)) < 0)
 		std::cerr << "ERROR connecting with server\n";
 
+	cout << endl << "Backup connected";
+	return sockfd;
+}
+
+int Backup::connect_chk_server()
+{
+	struct sockaddr_in main_addr; // server_address
+    struct hostent *server = gethostbyname(main_ip.c_str());
+
+	if (server == NULL)
+		std::cerr << "ERROR, no such host\n";
+
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1)
+		std::cerr << "ERROR opening socket\n";
+
+	main_addr.sin_family = AF_INET;
+	main_addr.sin_port = htons(main_port+1);
+	main_addr.sin_addr = *((struct in_addr *)server->h_addr);
+	bzero(&(main_addr.sin_zero), 8);
+
+	if (connect(sockfd,(struct sockaddr *) &main_addr,sizeof(main_addr)) < 0)
+		std::cerr << "ERROR connecting with server\n";
+
 	// Make socket non-blocking
 	int fl = fcntl(sockfd, F_GETFL, 0);
 	fcntl(sockfd, F_SETFL, fl | O_NONBLOCK);
 
-	cout << endl << "Backup connected";
+	cout << endl << "Check_server connected";
 	return sockfd;
 }
 
@@ -166,27 +214,34 @@ int Backup::receive_int(int sockfd)
 
 packet* Backup::receive_header(int sockfd, int timeout_sec)
 {
+	cout << endl << "entrei no receive_header";
+	cout << endl;
     buffer = (char*)buffer_address;
     header = (packet*)header_address;
 
 	int bytes_received=0;
 	bool timedout = false;
-
-	// Set up the timeout
-	fd_set input;
-	FD_ZERO(&input);
-	FD_SET(sockfd, &input);
 	struct timeval timeout;
-	timeout.tv_sec = timeout_sec;
-	timeout.tv_usec = 0;
-	int n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+
+	if(timeout_sec > 0)
+	{
+		// Set up the timeout
+		fd_set input;
+		FD_ZERO(&input);
+		FD_SET(sockfd, &input);
+		timeout.tv_sec = timeout_sec;
+		timeout.tv_usec = 0;
+		int n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+		if(n<0)
+			cout << endl << "Select error";
+	}
 
     while(bytes_received < header_size && !timedout)
     {
         int n = read(sockfd, &buffer[bytes_received], header_size-bytes_received);
 		if(n > 0)
         	bytes_received+=n;
-		else if(n < 0 && timeout_sec!=0)
+		else if(n <= 0 && timeout_sec>0)
 			timedout = true;
 	}
 	if(timedout){
@@ -214,15 +269,18 @@ packet* Backup::receive_payload(int sockfd, int timeout_sec)
 
 	int bytes_received=0;
 	bool timedout = false;
-
-	// Set up the timeout
-	fd_set input;
-	FD_ZERO(&input);
-	FD_SET(sockfd, &input);
 	struct timeval timeout;
-	timeout.tv_sec = timeout_sec;
-	timeout.tv_usec = 0;
-	int n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+
+	if(timeout_sec > 0)
+	{
+		// Set up the timeout
+		fd_set input;
+		FD_ZERO(&input);
+		FD_SET(sockfd, &input);
+		timeout.tv_sec = timeout_sec;
+		timeout.tv_usec = 0;
+		int n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+	}
 
     while(bytes_received < pkt->length && !timedout)
     {
@@ -230,7 +288,7 @@ packet* Backup::receive_payload(int sockfd, int timeout_sec)
         int n = read(sockfd, &buffer[bytes_received], pkt->length-bytes_received);
 		if(n > 0)
         	bytes_received+=n;
-		else if(n < 0 && timeout_sec!=0)
+		else if(n <= 0 && timeout_sec>0)
 			timedout = true;
 	}
 	pkt->_payload = (const char*)buffer;

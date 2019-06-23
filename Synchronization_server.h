@@ -31,8 +31,10 @@ class Synchronization_server
 	private:
 		int client_accept_sockfd;
 		int backup_accept_sockfd;
+		int chk_accept_sockfd;
 		int port;
 		int backup_port;
+		int chk_port;
 		int header_size;
 		int max_payload;
 		int packet_size;
@@ -49,9 +51,12 @@ class Synchronization_server
 		//vector<pthread_mutex_t> backup_mutexes;
 		//pthread_mutex_t r_w_backups_mutex;
 		//vector<int> r_w_backups;
+		vector<int> chk_sockets;
 
 		void accept_connections();
 		void close_server();
+
+		void signal_alive();
 
 		void check_finished_threads();
 

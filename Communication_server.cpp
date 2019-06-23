@@ -447,9 +447,8 @@ void Communication_server::send_string(int sockfd, string str)
         while (bytes_sent < header_size)
         {
             int n = write(sockfd, &buffer[bytes_sent], header_size-bytes_sent);
-            if (n < 0)
-	            printf("ERROR writing to socket\n");
-	        bytes_sent += n;
+            if (n > 0)
+	        	bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
         //cout << "\n\nHEADER!\n";
@@ -467,9 +466,8 @@ void Communication_server::send_string(int sockfd, string str)
         while (bytes_sent < pkt.length)
         {
             int n = write(sockfd, &pkt._payload[bytes_sent], pkt.length-bytes_sent);
-            if (n < 0)
-	            printf("ERROR writing to socket\n");
-	        bytes_sent += n;
+            if (n > 0)
+		       bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
         //cout << "PACKET!\n";
@@ -1106,4 +1104,19 @@ void Communication_server::unlock_rw_mutex(pthread_mutex_t *r_w_backups_mutex, v
 	// Stop reading
 	(*r_w_backups)[0]--;
 	pthread_mutex_unlock(r_w_backups_mutex);
+}
+
+
+void *Communication_server::signal_server_alive_helper(void *void_args)
+{
+    chk_alive_args* args = (chk_alive_args*)void_args;
+    ((Communication_server*)args->obj)->signal_server_alive(*args->sockfd);
+}
+void *Communication_server::signal_server_alive(int sockfd)
+{
+	while(!closing_server)
+	{
+		send_string(sockfd, "alive");
+		sleep(5);
+	}
 }

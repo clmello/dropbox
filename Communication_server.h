@@ -43,6 +43,12 @@ struct th_args{
 	vector<int> *r_w_backups = NULL;
 };
 
+struct chk_alive_args
+{
+	void *obj = NULL;
+	int* sockfd = NULL;
+};
+
 
 class Communication_server
 {
@@ -64,6 +70,7 @@ class Communication_server
 		long get_file_size(FILE *fp);
 
 		static void *receive_commands_helper(void *void_args);
+		static void *signal_server_alive_helper(void *void_args);
 
 	protected:
 
@@ -87,6 +94,8 @@ class Communication_server
 		time_t get_mtime(string filename, string username, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
 		void lock_rw_mutex(pthread_mutex_t *r_w_backups_mutex, vector<int> *r_w_backups);
 		void unlock_rw_mutex(pthread_mutex_t *r_w_backups_mutex, vector<int> *r_w_backups);
+
+		void *signal_server_alive(int sockfd);
 
 };
 

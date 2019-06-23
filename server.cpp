@@ -53,7 +53,7 @@ cout << "\n\nhost: " << host << "\nport: " << port << "\n\n";
 		// Start the server
 		cout << "\n\nmain server\n\n";
 		Synchronization_server server;
-		server.Init(5004, 5005);
+		server.Init(5013, 5014);
 	}
 	else
 	{

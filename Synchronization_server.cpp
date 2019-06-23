@@ -10,6 +10,7 @@ void Synchronization_server::Init(int port, int backup_port)
 {
 	this->port = port;
 	this->backup_port = backup_port;
+	this->chk_port = backup_port+1;
 	this->header_size = 10;
 	this->max_payload = 502;
 	this->packet_size = this->header_size + this->max_payload;
@@ -30,9 +31,10 @@ void Synchronization_server::accept_connections()
 	pthread_mutex_t r_w_backups_mutex;
 	pthread_mutex_init(&r_w_backups_mutex, NULL);
 	vector<int> backup_sockets;
+	vector<pthread_t> chk_threads;
 
-    socklen_t clilen, bkplen;
-    struct sockaddr_in serv_addr, cli_addr, serv_addr_bkp, bkp_addr;
+    socklen_t clilen, bkplen, chklen;
+    struct sockaddr_in serv_addr, cli_addr, serv_addr_bkp, bkp_addr, serv_addr_chk, chk_addr;
 
 	//-----------------------------------------------------------------------------------------
 	// INITIALIZE CLIENT CONNECTION SOCKET
@@ -74,28 +76,80 @@ void Synchronization_server::accept_connections()
     bkplen = sizeof(struct sockaddr_in);
 	//-----------------------------------------------------------------------------------------
 
+	//-----------------------------------------------------------------------------------------
+	// INITIALIZE CHECK_SERVER CONNECTION SOCKET
+	//-----------------------------------------------------------------------------------------
+	// Open the socket as non-blocking
+	if ((chk_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
+	printf("ERROR opening socket");
+	cout << "\nsocket aberto (porta " << chk_port << ")\n";
+
+	serv_addr_chk.sin_family = AF_INET;
+	serv_addr_chk.sin_port = htons(chk_port);
+	serv_addr_chk.sin_addr.s_addr = INADDR_ANY;
+	bzero(&(serv_addr_chk.sin_zero), 8);
+
+	if (bind(chk_accept_sockfd, (struct sockaddr *) &serv_addr_chk, sizeof(serv_addr_chk)) < 0)
+	printf("ERROR on binding");
+	cout << "\nbinding completo\n";
+	listen(chk_accept_sockfd, 5);
+	chklen = sizeof(struct sockaddr_in);
+	//-----------------------------------------------------------------------------------------
+
+	int times = 2;
     while(true)
     {
+		//times--;
 		int newsockfd = -1;
 		int backup_sockfd = -1;
-		cout << "\nWaiting for connections . . .";
+		int chk_sockfd = -1;
+		cout << endl << "Waiting for connections . . .";
+		cout << endl;
 
         // Accept connections
-        while(newsockfd<0 && !closing_server && backup_sockfd<0){
+		int time_between_signals = 5;
+		clock_t start = clock();
+        while(newsockfd<0 && !closing_server && backup_sockfd<0 && chk_sockfd<0)
+		{
             // Check if any threads finished
             check_finished_threads();
+
+			clock_t delta = clock()-start;
+			int delta_sec = delta / CLOCKS_PER_SEC;
+			if(delta_sec >= time_between_signals){
+				signal_alive();
+				start = clock();
+			}
+
             newsockfd = accept(client_accept_sockfd, (struct sockaddr *) &cli_addr, &clilen);
             backup_sockfd = accept(backup_accept_sockfd, (struct sockaddr *) &bkp_addr, &bkplen);
+            chk_sockfd = accept(chk_accept_sockfd, (struct sockaddr *) &chk_addr, &chklen);
         }
 		// CLOSING SERVER
         if(closing_server)
             close_server();
 
+		// NEW CHECK_SERVER
+		else if(chk_sockfd>=0)
+		{
+			cout << endl << "New check_server connection request";
+			chk_sockets.push_back(chk_sockfd);
+            // Create the thread for check_server
+			/*Communication_server com;
+			com.Init(chk_port, header_size, max_payload);
+			struct chk_alive_args args_chk;
+			args_chk.obj = &com;
+			args_chk.sockfd = &chk_sockfd;
+
+		    pthread_t chk_thread;
+            pthread_create(&chk_thread, NULL, com.signal_server_alive_helper, &args_chk);
+			chk_threads.push_back(chk_thread);*/
+		}
+
 		// NEW BACKUP
-		if(backup_sockfd>=0)
+		else if(backup_sockfd>=0)
 		{
 			cout << endl << "New backup connection request";
-			// TODO: CRIAR THREAD PARA O BACKUP
 			while(true)
 			{
 				pthread_mutex_lock(&r_w_backups_mutex);
@@ -114,18 +168,13 @@ void Synchronization_server::accept_connections()
 			pthread_mutex_init(&backup_mutexes.back(), NULL);
 
 			// Stop writing
-			pthread_mutex_lock(&r_w_backups_mutex);  // TODO: TÁ DANDO DEADLOCK AQUI
+			pthread_mutex_lock(&r_w_backups_mutex);
 			r_w_backups[1]--;
 			pthread_mutex_unlock(&r_w_backups_mutex);
-
-			// TODO: o codigo abaixo precisa ser em mais outra thread E com outro socket
-			/*Communication_server com;
-			com.Init(backup_port, header_size, max_payload);
-			com.send_string(backup_sockfd, "alive");*/
 		}
 
 		// NEW CLIENT
-		if(newsockfd>=0)
+		else if(newsockfd>=0)
 		{
 	        cout << "\nNew client connection request";
 
@@ -203,6 +252,7 @@ void Synchronization_server::accept_connections()
 	        }
 	    }
 	}
+	pthread_join(chk_threads[0], NULL);
 }
 
 void Synchronization_server::close_server()
@@ -222,6 +272,16 @@ void Synchronization_server::close_server()
     cout << "\nDONE!";
     cout << "\nserver closed\n";
     exit(0);
+}
+
+void Synchronization_server::signal_alive()
+{
+	Communication_server com;
+	com.Init(chk_port, header_size, max_payload);
+	for(int i=0; i<chk_sockets.size(); i++)
+	{
+		com.send_string(chk_sockets[i], "alive");
+	}
 }
 
 void Synchronization_server::check_finished_threads()
@@ -271,29 +331,12 @@ packet* Synchronization_server::receive_header(int sockfd)
     header = (packet*)header_address;
 
 	int bytes_received=0;
-	bool timedout = false;
 
-	// Set up the timeout
-	fd_set input;
-	FD_ZERO(&input);
-	FD_SET(sockfd, &input);
-	struct timeval timeout;
-	timeout.tv_sec = 10;
-	timeout.tv_usec = 0;
-	int n = select(sockfd + 1, &input, NULL, NULL, &timeout);
-
-    while(bytes_received < header_size && !timedout)
+    while(bytes_received < header_size)
     {
         int n = read(sockfd, &buffer[bytes_received], header_size-bytes_received);
 		if(n > 0)
         	bytes_received+=n;
-		else if(n < 0)
-			timedout = true;
-	}
-	if(timedout){
-		cout << endl << "TIMEOUT NO RECEIVE_HEADER!";
-		header->type = 10;
-		return header;
 	}
 	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
 	{
@@ -314,30 +357,14 @@ packet* Synchronization_server::receive_payload(int sockfd)
 		return pkt;
 
 	int bytes_received=0;
-	bool timedout = false;
 
-	// Set up the timeout
-	fd_set input;
-	FD_ZERO(&input);
-	FD_SET(sockfd, &input);
-	struct timeval timeout;
-	timeout.tv_sec = 10;
-	timeout.tv_usec = 0;
-	int n = select(sockfd + 1, &input, NULL, NULL, &timeout);
-
-    while(bytes_received < pkt->length && !timedout)
+    while(bytes_received < pkt->length)
     {
         // read from the socket
         int n = read(sockfd, &buffer[bytes_received], pkt->length-bytes_received);
 		if(n > 0)
         	bytes_received+=n;
-		else if(n < 0)
-			timedout = true;
 	}
 	pkt->_payload = (const char*)buffer;
-	if(timedout){
-		cout << endl << "TIMEOUT NO RECEIVE_HEADER!";
-		header->type = 10;
-	}
 	return pkt;
 }

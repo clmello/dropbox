@@ -403,6 +403,10 @@ int main(int argc, char **argv) {
         std::exit(1);
     }
 
+    // Receive backups IPs and sockets
+    // backups IPs and sockets are at Communication_client
+    communication.receive_backups_ip_socket();
+
     running = true;
     pthread_mutex_init(&socket_mtx, NULL);
     pthread_mutex_init(&watched_files_copy_mtx, NULL);

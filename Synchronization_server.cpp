@@ -1,5 +1,9 @@
 #include "Synchronization_server.h"
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 using namespace std;
 
 // This global variable tells all the threads in the server that the server will close
@@ -30,6 +34,7 @@ void Synchronization_server::accept_connections()
 	pthread_mutex_t r_w_backups_mutex;
 	pthread_mutex_init(&r_w_backups_mutex, NULL);
 	vector<int> backup_sockets;
+	vector<std::string> backup_ips;
 
     socklen_t clilen, bkplen;
     struct sockaddr_in serv_addr, cli_addr, serv_addr_bkp, bkp_addr;
@@ -108,7 +113,16 @@ void Synchronization_server::accept_connections()
 			r_w_backups[1]++;
 			pthread_mutex_unlock(&r_w_backups_mutex);
 
+			std::string s = inet_ntoa(bkp_addr.sin_addr);
+			std::cout << "\nIP BACKUP: " << s;
+			backup_ips.push_back(s);
+			std::cout << "\nSOCKET BACKUP: " << backup_sockfd;
 			backup_sockets.push_back(backup_sockfd);
+			/*
+			struct sockaddr_in *addr_in = (struct sockaddr_in *)res;
+			char *s = inet_ntoa(addr_in->sin_addr);
+			printf("IP address: %s\n", s);
+			 */
 			pthread_mutex_t mtx;
 			backup_mutexes.push_back(mtx);
 			pthread_mutex_init(&backup_mutexes.back(), NULL);
@@ -167,6 +181,18 @@ void Synchronization_server::accept_connections()
 
 			    // Tell the client that the connection has been accepted
 			    new_client.com.send_int(newsockfd, 1);
+
+				// Send backups IPs and sockets
+				int size = backup_sockets.size();
+				new_client.com.send_int(newsockfd, size);
+
+				// backup_sockets and backup_ips should be the same size
+				for(int i=0; i < backup_sockets.size(); i++) {
+					std::cout << "\ni: " << i << "    backup_sockets size: " << backup_sockets.size();
+					std::cout << "\nENVIANDO BACKUP SOCKETS E IPS\n";
+					new_client.com.send_string(newsockfd, backup_ips[i]);
+					new_client.com.send_int(newsockfd, backup_sockets[i]);
+				}
 
 			    // Create client folder, if it doesn't already exist
 			    string homedir = getenv("HOME");

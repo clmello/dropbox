@@ -37,6 +37,12 @@ private:
 	//size_t header_address;
 	size_t buffer_address;
 
+	struct backup {
+        std::string ip;
+        int socket;
+    };
+    std::vector<backup> backups;
+
 public:
 
 	Communication_client();
@@ -51,7 +57,8 @@ public:
 	int receive_int(int timeout_sec);
 	long get_file_size(FILE *fp);
 	int delete_file(std::string path);
-
+	void receive_backups_ip_socket();
+	
 	bool check_server_command(int command);
 	void upload_command(int command, std::string filename, std::string path, time_t mtime);
 	void download_command(int command, std::string filename, std::string path, Client::file *download_file);

@@ -445,19 +445,15 @@ void Communication_client::receive_backups_ip_socket() {
 	// Receive backups IPs and sockets
     int num_backups = receive_int(10);
     std::cout << "\nSIZE_BACKUPS: " << num_backups << "\n";
-	struct backup bkup;
 
     for(int i=0; i < num_backups; i++) {
         // First receive IP
 		packet pkt;
         receive_payload(&pkt, 0, 0);
-		bkup.ip = pkt._payload;
-		std::cout << "BACKUP IP: " << bkup.ip << "\n";
-        // Then receive socket
-		bkup.socket = receive_int(10);
-		std::cout << "BACKUP SOCKET: " << bkup.socket << "\n";
+		std::string ip = pkt._payload;
+		std::cout << "BACKUP IP: " << ip << "\n";
 
-		backups.push_back(bkup);
+		backup_ips.push_back(ip);
     }
 }
 

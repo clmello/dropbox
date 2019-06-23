@@ -45,6 +45,8 @@ int main(int argc, char **argv)
 	sigemptyset(&sigInt_handler.sa_mask);
 	sigInt_handler.sa_flags = 0;
 	sigaction(SIGINT, &sigInt_handler, NULL);
+	// Also, ignore sigpipe
+    signal(SIGPIPE, SIG_IGN);
 
 cout << "\n\nhost: " << host << "\nport: " << port << "\n\n";
 

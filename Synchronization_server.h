@@ -46,7 +46,7 @@ class Synchronization_server
 		vector<file> watched_files;
 		vector<Connected_client> connected_clients;
 		vector<int*> threads_finished_address;
-		vector<int> backup_sockets;
+		//vector<int> backup_sockets;
 		//vector<int> backup_sockets;
 		//vector<pthread_mutex_t> backup_mutexes;
 		//pthread_mutex_t r_w_backups_mutex;

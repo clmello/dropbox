@@ -232,15 +232,12 @@ void Synchronization_server::accept_connections()
 			    new_client.com.send_int(newsockfd, 1);
 
 				// Send backups IPs and sockets
-				int size = backup_sockets.size();
+				int size = backup_ips.size();
 				new_client.com.send_int(newsockfd, size);
 
 				// backup_sockets and backup_ips should be the same size
-				for(int i=0; i < backup_sockets.size(); i++) {
-					std::cout << "\ni: " << i << "    backup_sockets size: " << backup_sockets.size();
-					std::cout << "\nENVIANDO BACKUP SOCKETS E IPS\n";
+				for(int i=0; i < backup_ips.size(); i++) {
 					new_client.com.send_string(newsockfd, backup_ips[i]);
-					new_client.com.send_int(newsockfd, backup_sockets[i]);
 				}
 
 			    // Create client folder, if it doesn't already exist

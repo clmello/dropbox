@@ -33,6 +33,7 @@ class Backup
         std::vector<file> watched_files;
         string dir;
         pthread_t chk_thread;
+		bool connected;
 
         static void *check_server_helper(void *void_args);
         void check_server(int* main_check_sockfd, int *server_died);

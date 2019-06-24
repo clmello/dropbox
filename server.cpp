@@ -48,14 +48,12 @@ int main(int argc, char **argv)
 	// Also, ignore sigpipe
     signal(SIGPIPE, SIG_IGN);
 
-cout << "\n\nhost: " << host << "\nport: " << port << "\n\n";
-
 	if(host=="")
 	{
 		// Start the server
 		cout << "\n\nmain server\n\n";
 		Synchronization_server server;
-		server.Init(5013, 5014);
+		server.Init(4000);
 	}
 	else
 	{

@@ -24,7 +24,7 @@ using namespace std;
 class Synchronization_server
 {
 	public:
-		void Init(int port, int backup_port);
+		void Init(int port);
 
 	protected:
 

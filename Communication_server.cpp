@@ -174,8 +174,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 				// We need to guarantee that no new backups will connect while
 				//the next for executes
 				lock_rw_mutex(r_w_backups_mutex, r_w_backups);
-				cout << endl << "sending file to " << backup_mutexes->size() << "backups";
-				cout << endl << "backup_sockets[0]: " << (*backup_sockets)[0] << endl << endl;
+
 				// Send file to all backups
 				for(int i=0; i<backup_mutexes->size(); i++)
 				{
@@ -272,9 +271,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 				// We need to guarantee that no new backups will connect while
 				//the next for executes
 				lock_rw_mutex(r_w_backups_mutex, r_w_backups);
-
-				cout << endl << "deleting file on " << backup_mutexes->size() << "backups";
-				cout << endl << "backup_sockets[0]: " << (*backup_sockets)[0] << endl << endl;
+				
 				// Send command to all backups
 				for(int i=0; i<backup_mutexes->size(); i++)
 				{

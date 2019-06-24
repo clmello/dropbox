@@ -10,11 +10,11 @@ using namespace std;
 extern bool closing_server;
 
 
-void Synchronization_server::Init(int port, int backup_port)
+void Synchronization_server::Init(int port)
 {
 	this->port = port;
-	this->backup_port = backup_port;
-	this->chk_port = backup_port+1;
+	this->backup_port = port+1;
+	this->chk_port = port+2;
 	this->header_size = 10;
 	this->max_payload = 502;
 	this->packet_size = this->header_size + this->max_payload;
@@ -47,7 +47,7 @@ void Synchronization_server::accept_connections()
     // Create the socket as non-blocking. Without this, it's impossible for the server to close (since it blocks)
     if ((client_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
         printf("ERROR opening socket");
-    cout << "\nsocket aberto (porta " << port << ")\n";
+    cout << "\nClient socket open (port " << port << ")";
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
@@ -56,7 +56,6 @@ void Synchronization_server::accept_connections()
 
     if (bind(client_accept_sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
         printf("ERROR on binding");
-    cout << "\nbinding completo\n";
     listen(client_accept_sockfd, 5);
     clilen = sizeof(struct sockaddr_in);
 	//-----------------------------------------------------------------------------------------
@@ -67,7 +66,7 @@ void Synchronization_server::accept_connections()
 	// Open the socket as non-blocking
     if ((backup_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
         printf("ERROR opening socket");
-    cout << "\nsocket aberto (porta " << backup_port << ")\n";
+    cout << "\nBackup socket open (port " << backup_port << ")";
 
     serv_addr_bkp.sin_family = AF_INET;
     serv_addr_bkp.sin_port = htons(backup_port);
@@ -76,7 +75,6 @@ void Synchronization_server::accept_connections()
 
     if (bind(backup_accept_sockfd, (struct sockaddr *) &serv_addr_bkp, sizeof(serv_addr_bkp)) < 0)
         printf("ERROR on binding");
-    cout << "\nbinding completo\n";
     listen(backup_accept_sockfd, 5);
     bkplen = sizeof(struct sockaddr_in);
 	//-----------------------------------------------------------------------------------------
@@ -87,7 +85,7 @@ void Synchronization_server::accept_connections()
 	// Open the socket as non-blocking
 	if ((chk_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
 	printf("ERROR opening socket");
-	cout << "\nsocket aberto (porta " << chk_port << ")\n";
+	cout << "\nCheck_server socket open (port " << chk_port << ")\n";
 
 	serv_addr_chk.sin_family = AF_INET;
 	serv_addr_chk.sin_port = htons(chk_port);
@@ -95,16 +93,13 @@ void Synchronization_server::accept_connections()
 	bzero(&(serv_addr_chk.sin_zero), 8);
 
 	if (bind(chk_accept_sockfd, (struct sockaddr *) &serv_addr_chk, sizeof(serv_addr_chk)) < 0)
-	printf("ERROR on binding");
-	cout << "\nbinding completo\n";
+		printf("ERROR on binding");
 	listen(chk_accept_sockfd, 5);
 	chklen = sizeof(struct sockaddr_in);
 	//-----------------------------------------------------------------------------------------
 
-	int times = 2;
     while(true)
     {
-		//times--;
 		int newsockfd = -1;
 		int backup_sockfd = -1;
 		int chk_sockfd = -1;
@@ -112,8 +107,10 @@ void Synchronization_server::accept_connections()
 		cout << endl;
 
         // Accept connections
-		int time_between_signals = 5;
+		int time_between_signals = 3;
 		clock_t start = clock();
+		// Signal a first time so we don't have to wait 3 seconds
+		signal_alive();
         while(newsockfd<0 && !closing_server && backup_sockfd<0 && chk_sockfd<0)
 		{
             // Check if any threads finished
@@ -275,7 +272,6 @@ void Synchronization_server::accept_connections()
 	        }
 	    }
 	}
-	pthread_join(chk_threads[0], NULL);
 }
 
 void Synchronization_server::close_server()
@@ -303,6 +299,7 @@ void Synchronization_server::signal_alive()
 	com.Init(chk_port, header_size, max_payload);
 	for(int i=0; i<chk_sockets.size(); i++)
 	{
+		//cout << endl << "sending alive to " << chk_sockets[i];
 		com.send_string(chk_sockets[i], "alive");
 	}
 }

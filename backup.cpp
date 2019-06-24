@@ -14,24 +14,59 @@ Backup::Backup(string main_ip, int main_port)
 	this->main_ip = main_ip;
 	this->main_port = main_port;
 
-	cout << "\n\nhost: " << this->main_ip << "\nport: " << this->main_port << "\n\n";
-	main_sockfd = connect_backup_to_main();
-	chk_sockfd = connect_chk_server();
+	bool is_main = false;
+	connected = false;
+	while(!is_main)
+	{
+		cout << "\n\nhost: " << this->main_ip << "\nport: " << this->main_port << "\n\n";
+		while(!connected){
+			main_sockfd = connect_backup_to_main();
+			// If could not connect, sleep for 3 seconds so the requests won't flood the network
+			if(!connected)
+				sleep(3);
+		}
+		chk_sockfd = connect_chk_server();
 
-	int server_died = false;
+		int server_died = false;
 
-	// Create check_server thread
-	struct bkp_args args;
-	args.obj = this;
-	args.main_check_sockfd = &chk_sockfd;
-	args.server_died = &server_died;
-    pthread_create(&chk_thread, NULL, &check_server_helper, &args);
+		// Create check_server thread
+		struct bkp_args args;
+		args.obj = this;
+		args.main_check_sockfd = &chk_sockfd;
+		args.server_died = &server_died;
+	    pthread_create(&chk_thread, NULL, &check_server_helper, &args);
 
-	// Receive commands loop
-	receive_commands(main_sockfd, &server_died);
-	pthread_join(chk_thread, NULL);
+		// Receive commands loop
+		receive_commands(main_sockfd, &server_died);
+		pthread_join(chk_thread, NULL);
 
-	// TODO: eleição
+		close(main_sockfd);
+		close(chk_sockfd);
+
+		cout << endl << endl << "Electing new main server" << endl;
+		// TODO: eleição
+		// A função election() deve retornar "" para o novo main server e "IP_do_novo_main"
+		//para todos os outros
+		// string new_host = election();
+		//----------------------------
+		// Essa linha é só p/ testes
+		string new_host = "localhost";
+		//----------------------------
+		if(new_host=="")
+			is_main = true;
+		else
+		{
+			main_ip = new_host;
+			this->main_port = main_port + 3;
+			connected = false;
+			cout << endl << "New main port: " << main_port;
+		}
+	}
+
+	// If the code gets here, this backup has been elected the new main server
+	Synchronization_server sync_server;
+	// If the ports were 4000, 4001 and 4002, they become 4003, 4004 and 4005
+	sync_server.Init(main_port+2);
 
 	exit(0);
 }
@@ -51,8 +86,9 @@ void Backup::check_server(int* main_check_sockfd, int *server_died)
 		struct packet *pkt = receive_payload(*main_check_sockfd, 10);
 		// Check if timed out
 		if(pkt->type == 10){
+			cout << endl << "SERVER DIED!!";
+			cout << endl;
 			*server_died = true;
-			exit(0);
 		}
 		else
 		{
@@ -67,6 +103,7 @@ void Backup::check_server(int* main_check_sockfd, int *server_died)
 				cout << endl << "IT'S ALIIIIIIVE!!!!!!" << endl;
 		}
 	}
+	cout << endl << "saiu do while do check_server" << endl;
 }
 
 void Backup::close_backup(int main_check_sockfd)
@@ -91,7 +128,7 @@ void Backup::receive_commands(int sockfd, int *server_died)
 
                 // Receive username
 		        struct packet *pkt;
-				pkt = receive_payload(sockfd, 0);
+				pkt = receive_payload(sockfd, 30);
                 string username = pkt->_payload;
 				username.resize(pkt->length);
 
@@ -99,7 +136,7 @@ void Backup::receive_commands(int sockfd, int *server_died)
 				string path = create_user_folder(username);
 
                 // Receive the file name
-                pkt = receive_payload(sockfd, 0);
+                pkt = receive_payload(sockfd, 30);
                 string filename = pkt->_payload;
 				filename.resize(pkt->length);
 
@@ -114,12 +151,12 @@ void Backup::receive_commands(int sockfd, int *server_died)
 
                 // Receive username
 		        struct packet *pkt;
-				pkt = receive_payload(sockfd, 0);
+				pkt = receive_payload(sockfd, 30);
                 string username = pkt->_payload;
 				username.resize(pkt->length);
 
                 // Receive the file name
-                pkt = receive_payload(sockfd, 0);
+                pkt = receive_payload(sockfd, 30);
                 string filename = pkt->_payload;
 				filename.resize(pkt->length);
 
@@ -132,6 +169,7 @@ void Backup::receive_commands(int sockfd, int *server_died)
 			}
 		}
 	}
+	cout << endl << "Saiu do while do receive_commands";
 }
 
 string Backup::create_user_folder(string username)
@@ -154,23 +192,34 @@ string Backup::create_user_folder(string username)
 
 int Backup::connect_backup_to_main()
 {
+	cout << endl << endl << "Tentando conectar com " << main_ip << ":" << main_port << endl << endl;
 	struct sockaddr_in main_addr; // server_address
     struct hostent *server = gethostbyname(main_ip.c_str());
+	int sockfd;
 
 	if (server == NULL)
 		std::cerr << "ERROR, no such host\n";
+	else
+	{
+	    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	    if (sockfd == -1)
+			std::cerr << "ERROR opening socket\n";
+		else
+		{
+			main_addr.sin_family = AF_INET;
+			main_addr.sin_port = htons(main_port);
+			main_addr.sin_addr = *((struct in_addr *)server->h_addr);
+			bzero(&(main_addr.sin_zero), 8);
 
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1)
-		std::cerr << "ERROR opening socket\n";
-
-	main_addr.sin_family = AF_INET;
-	main_addr.sin_port = htons(main_port);
-	main_addr.sin_addr = *((struct in_addr *)server->h_addr);
-	bzero(&(main_addr.sin_zero), 8);
-
-	if (connect(sockfd,(struct sockaddr *) &main_addr,sizeof(main_addr)) < 0)
-		std::cerr << "ERROR connecting with server\n";
+			if (connect(sockfd,(struct sockaddr *) &main_addr,sizeof(main_addr)) < 0)
+				std::cerr << "ERROR connecting with server\n";
+			else
+				connected = true;
+			// Make socket non-blocking
+			int fl = fcntl(sockfd, F_GETFL, 0);
+			fcntl(sockfd, F_SETFL, fl | O_NONBLOCK);
+		}
+	}
 
 	cout << endl << "Backup connected";
 	return sockfd;
@@ -206,7 +255,7 @@ int Backup::connect_chk_server()
 
 int Backup::receive_int(int sockfd)
 {
-	struct packet *pkt = receive_payload(sockfd, 0);
+	struct packet *pkt = receive_payload(sockfd, 30);
 	int command;
 	memcpy(&command, pkt->_payload, pkt->length);
 	return command;
@@ -308,7 +357,7 @@ void Backup::receive_file(int sockfd, string path)
     // Get the number of packets to be received
     // To do that, we must receive the first packet
     struct packet *pkt;
-    pkt = receive_payload(sockfd, 0);
+    pkt = receive_payload(sockfd, 30);
     uint32_t total_size = pkt->total_size;
 
     // Write the first payload to the file
@@ -323,7 +372,7 @@ void Backup::receive_file(int sockfd, string path)
     for(i=2; i<=total_size; i++)
     {
         // Receive payload
-        receive_payload(sockfd, 0);
+        receive_payload(sockfd, 30);
         // Write it to the file
         bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
         if (bytes_written_to_file < pkt->length)

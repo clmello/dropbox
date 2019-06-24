@@ -18,6 +18,7 @@
 #include <dirent.h>
 #include <netdb.h>
 #include <fcntl.h>
+#include <algorithm>
 
 using namespace std;
 
@@ -57,8 +58,9 @@ class Synchronization_server
 		void close_server();
 
 		void signal_alive();
-
 		void check_finished_threads();
+
+		void send_all_files(int sockfd); // Send all the files in the server to a backup
 
 		packet* receive_payload(int sockfd);// Receives the _payload of the packet from the client and returns a packet struct containing the _payload
 		packet* receive_header(int sockfd);	// Receives the header of the packet from the client and returns a packet struct containing the header

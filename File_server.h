@@ -19,6 +19,7 @@ class File_server
         void done_writing();
 
         string get_path();
+        string get_filename();
         pthread_mutex_t *get_mutex();
         time_t get_mtime();
         void set_mtime(time_t mtime);

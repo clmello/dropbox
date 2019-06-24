@@ -182,6 +182,9 @@ void Synchronization_server::accept_connections()
 			pthread_mutex_lock(&r_w_backups_mutex);
 			r_w_backups[1]--;
 			pthread_mutex_unlock(&r_w_backups_mutex);
+
+			// Send all server files to the backup
+			send_all_files(backup_sockfd);
 		}
 
 		// NEW CLIENT
@@ -343,6 +346,46 @@ void Synchronization_server::check_finished_threads()
 				connected_clients[i].remove_connection();
 		}
 	}
+}
+
+void Synchronization_server::send_all_files(int sockfd)
+{
+	// Lock all the user_files mutexes so that no new file is added while we send the files to the backup
+	for(int i=0; i<connected_clients.size(); i++)
+		pthread_mutex_lock(connected_clients[i].get_user_files_mutex());
+
+	vector<string> visited_usernames;
+	Communication_server com;
+	com.Init(backup_port, header_size, max_payload);
+	// Send the number of connected clients
+	com.send_int(sockfd, connected_clients.size());
+	for(int i=0; i<connected_clients.size(); i++)
+	{
+		// Only send the files if the username has not been visited
+		string username = *connected_clients[i].get_username();
+		if(find(visited_usernames.begin(), visited_usernames.end(), username) == visited_usernames.end())
+		{
+			visited_usernames.push_back(*connected_clients[i].get_username());
+			// Send the username
+			com.send_string(sockfd, username);
+			// Send the number of files
+			com.send_int(sockfd, connected_clients[i].get_user_files()->size());
+			for(int j=0; j<connected_clients[i].get_user_files()->size(); j++)
+			{
+				// Send each filename
+				com.send_string(sockfd, (*connected_clients[i].get_user_files())[j].get_filename());
+				// Send each file
+				com.send_file(sockfd, (*connected_clients[i].get_user_files())[j].get_path());
+			}
+		}
+		// If it has been visited, tell the backup that there are 0 files
+		else
+			com.send_int(sockfd, 0);
+	}
+
+	// Unlock all the user_files mutexes
+	for(int i=0; i<connected_clients.size(); i++)
+		pthread_mutex_unlock(connected_clients[i].get_user_files_mutex());
 }
 
 packet* Synchronization_server::receive_header(int sockfd)

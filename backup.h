@@ -46,6 +46,7 @@ class Backup
 		packet* receive_payload(int sockfd, int timeout_sec);
 		packet* receive_header(int sockfd, int timeout_sec);
 		void receive_file(int sockfd, string path);
+		void receive_server_files(int sockfd);
 };
 
 

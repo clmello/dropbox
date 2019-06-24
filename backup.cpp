@@ -27,8 +27,9 @@ Backup::Backup(string main_ip, int main_port)
 		}
 		chk_sockfd = connect_chk_server();
 
-		int server_died = false;
+		receive_server_files(main_sockfd);
 
+		int server_died = false;
 		// Create check_server thread
 		struct bkp_args args;
 		args.obj = this;
@@ -379,4 +380,35 @@ void Backup::receive_file(int sockfd, string path)
             cout << "\nERROR WRITING TO " << path << endl;
     }
     fclose(fp);
+}
+
+void Backup::receive_server_files(int sockfd)
+{
+    const char *homedir = getenv("HOME");
+    string syncdir = "/bkp_sync_dir_";
+    string base_path = string(homedir) + syncdir;
+
+	// Receive the number of clients
+	int num_clients = receive_int(sockfd);
+	for(int i=0; i<num_clients; i++)
+	{
+		// Receive the username
+		struct packet *pkt = receive_payload(sockfd, 30);
+		string str_buff = pkt->_payload;
+		string username = str_buff.substr(0, pkt->length);
+		// Receive the number of files
+		int num_files = receive_int(sockfd);
+		for(int j=0; j<num_files; j++)
+		{
+			// Receive file name
+			pkt = receive_payload(sockfd, 30);
+			str_buff = pkt->_payload;
+			string filename = str_buff.substr(0, pkt->length);
+
+			string path = base_path + username + "/" + filename;
+
+			// Receive file
+			receive_file(sockfd, path);
+		}
+	}
 }

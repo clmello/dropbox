@@ -77,6 +77,8 @@ void File_server::done_writing()
 
 string File_server::get_path() {return path;}
 
+string File_server::get_filename() {return path.substr(path.find_last_of("\\/")+1, path.length());}
+
 pthread_mutex_t *File_server::get_mutex() {return &mutex;}
 
 time_t File_server::get_mtime() {return mtime;}

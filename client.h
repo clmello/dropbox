@@ -25,7 +25,7 @@ public:
     struct file{time_t mtime; time_t local_mtime; std::string name;};
     std::vector<file> watched_files;
 
-    Client(std::string username, std::string hostname, int port, std::string download_path);
+    void Init(std::string username, std::string hostname, int port, std::string download_path);
 
     // gets e sets
     void setUsername(std::string username);

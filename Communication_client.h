@@ -53,7 +53,7 @@ public:
 	int receive_int(int timeout_sec);
 	long get_file_size(FILE *fp);
 	int delete_file(std::string path);
-	void receive_backups_ip_socket();
+	std::vector<std::string> receive_backups_ip_socket();
 
 	bool check_server_command(int command);
 	void upload_command(int command, std::string filename, std::string path, time_t mtime);

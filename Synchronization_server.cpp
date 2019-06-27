@@ -348,6 +348,47 @@ void Synchronization_server::check_finished_threads()
 	}
 }
 
+int Synchronization_server::get_num_users()
+{
+	vector<string> visited_usernames;
+	int num_users = 0;
+	for(int i=0; i<connected_clients.size(); i++)
+	{
+		// Only increment num_users if the username has not been visited
+		string username = *connected_clients[i].get_username();
+		if(find(visited_usernames.begin(), visited_usernames.end(), username) == visited_usernames.end())
+		{
+			visited_usernames.push_back(*connected_clients[i].get_username());
+			num_users ++;
+		}
+	}
+
+	return num_users;
+}
+
+int Synchronization_server::get_num_files(string username)
+{
+	int num_files = 0;
+	vector<File_server> *user_files;
+
+	for(int index=0; index<connected_clients.size(); index++)
+	{
+		if(username == *connected_clients[index].get_username()){
+			user_files = connected_clients[index].get_user_files();
+			break;
+		}
+	}
+	cout << endl << "User: " << username;
+	cout << endl << "Existem " << user_files->size() << " arquivos";
+	for(int i=0; i<user_files->size(); i++)
+	{
+		cout << endl << "The file " << (*user_files)[i].get_filename() << " has mtime == " << (*user_files)[i].get_mtime();
+		if((*user_files)[i].get_mtime()!=-1)
+			num_files++;
+	}
+	return num_files;
+}
+
 void Synchronization_server::send_all_files(int sockfd)
 {
 	// Lock all the user_files mutexes so that no new file is added while we send the files to the backup
@@ -357,8 +398,9 @@ void Synchronization_server::send_all_files(int sockfd)
 	vector<string> visited_usernames;
 	Communication_server com;
 	com.Init(backup_port, header_size, max_payload);
-	// Send the number of connected clients
-	com.send_int(sockfd, connected_clients.size());
+	// Send the number of connected USERS
+	com.send_int(sockfd, get_num_users());
+	cout << endl << "I HAVE " << get_num_users() << " USERS";
 	for(int i=0; i<connected_clients.size(); i++)
 	{
 		// Only send the files if the username has not been visited
@@ -369,13 +411,20 @@ void Synchronization_server::send_all_files(int sockfd)
 			// Send the username
 			com.send_string(sockfd, username);
 			// Send the number of files
-			com.send_int(sockfd, connected_clients[i].get_user_files()->size());
-			for(int j=0; j<connected_clients[i].get_user_files()->size(); j++)
+			com.send_int(sockfd, get_num_files(username));
+			cout << endl << username << " HAS " << connected_clients[i].get_user_files_size() << " FILES";
+			if(connected_clients[i].get_user_files_size()>0)
 			{
-				// Send each filename
-				com.send_string(sockfd, (*connected_clients[i].get_user_files())[j].get_filename());
-				// Send each file
-				com.send_file(sockfd, (*connected_clients[i].get_user_files())[j].get_path());
+				for(int j=0; j<connected_clients[i].get_user_files()->size(); j++)
+				{
+					if((*connected_clients[i].get_user_files())[j].get_mtime() != -1)
+					{
+						// Send each filename
+						com.send_string(sockfd, (*connected_clients[i].get_user_files())[j].get_filename());
+						// Send each file
+						com.send_file(sockfd, (*connected_clients[i].get_user_files())[j].get_path());
+					}
+				}
 			}
 		}
 		// If it has been visited, tell the backup that there are 0 files

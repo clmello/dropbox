@@ -22,6 +22,7 @@ class Connected_client{
 		int get_num_connections();
 		pthread_t get_thread();
 		vector<File_server> *get_user_files();
+		int get_user_files_size();
 		pthread_mutex_t *get_user_files_mutex();
 
 		// This method MUST BE CALLED after the creation of an object

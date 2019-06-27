@@ -42,6 +42,20 @@ vector<File_server> *Connected_client::get_user_files()
 	return user_files_pointer;
 }
 
+int Connected_client::get_user_files_size()
+{
+	int num_files = 0;
+	cout << endl << "User: " << username;
+	cout << endl << "Existem " << user_files.size() << " arquivos";
+	for(int i=0; i<user_files.size(); i++)
+	{
+		cout << endl << "The file " << user_files[i].get_filename() << " has mtime == " << user_files[i].get_mtime();
+		if(user_files[i].get_mtime()!=-1)
+			num_files++;
+	}
+	return num_files;
+}
+
 pthread_mutex_t *Connected_client::get_user_files_mutex()
 {
 	return user_files_mutex_pointer;

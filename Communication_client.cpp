@@ -441,7 +441,7 @@ int Communication_client::delete_file(std::string path) {
     return error;
 }
 
-void Communication_client::receive_backups_ip_socket() {
+std::vector<std::string> Communication_client::receive_backups_ip_socket() {
 	// Receive backups IPs and sockets
     int num_backups = receive_int(10);
     std::cout << "\nSIZE_BACKUPS: " << num_backups << "\n";
@@ -455,6 +455,8 @@ void Communication_client::receive_backups_ip_socket() {
 
 		backup_ips.push_back(ip);
     }
+
+	return backup_ips;
 }
 
 bool Communication_client::check_server_command(int command){

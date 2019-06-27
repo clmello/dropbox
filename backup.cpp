@@ -51,7 +51,7 @@ Backup::Backup(string main_ip, int main_port)
 		// string new_host = election();
 		//----------------------------
 		// Essa linha é só p/ testes
-		string new_host = "localhost";
+		string new_host = "";
 		//----------------------------
 		if(new_host=="")
 			is_main = true;
@@ -390,14 +390,18 @@ void Backup::receive_server_files(int sockfd)
 
 	// Receive the number of clients
 	int num_clients = receive_int(sockfd);
+	cout << endl << "The server has " << num_clients << " clients";
 	for(int i=0; i<num_clients; i++)
 	{
 		// Receive the username
 		struct packet *pkt = receive_payload(sockfd, 30);
 		string str_buff = pkt->_payload;
 		string username = str_buff.substr(0, pkt->length);
+		// Create the user folder, if it doesn't already exist
+		create_user_folder(username);
 		// Receive the number of files
 		int num_files = receive_int(sockfd);
+		cout << endl << "The user has " << num_files << " files";
 		for(int j=0; j<num_files; j++)
 		{
 			// Receive file name

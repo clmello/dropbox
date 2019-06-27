@@ -15,12 +15,13 @@
 Communication_client communication;
 
 bool running;
+bool server_alive;
 
 pthread_mutex_t socket_mtx;
 pthread_mutex_t watched_files_copy_mtx;
 std::vector<Client::file> watched_files_copy;
 
-Client::Client(std::string username, std::string hostname, int port, std::string download_path){
+void Client::Init(std::string username, std::string hostname, int port, std::string download_path){
     this->username = username;
 	this->hostname = hostname;
 	this->port = port;
@@ -196,13 +197,14 @@ void Client::check_files() {
 void *Client::check_files_loop() {
     signal(SIGPIPE, SIG_IGN);
     // enquanto a thread está aberta
-    while(running) {
+    while(running && server_alive) {
         std::cout << "\n\nchecando server...";
-        bool server_alive = communication.check_server_command(10);
+        server_alive = communication.check_server_command(10);
         std::cout << std::endl << "server_alive: " << server_alive;
 
         if(!server_alive)
-            exit(0);
+            break;
+            //exit(0);
 
         std::cout << "\nchecando arquivos!";
         check_files();
@@ -294,8 +296,8 @@ void Client::userInterface() {
     std::cout << " get_sync_dir\n";
     std::cout << " exit\n";
 
-    while(running) {
-       std::getline(std::cin, input);
+    while(running && server_alive) {
+        std::getline(std::cin, input);
         command = "";
         command = input.substr(0, input.find(" "));
         input = input.substr(input.find(" ") + 1, input.length());
@@ -393,30 +395,71 @@ int main(int argc, char **argv) {
     getcwd(cwd, sizeof(cwd));
 	std::string s_cwd = cwd;
 
-	Client client = Client(username, host, port, s_cwd);
+    std::vector<std::string> backup_ips;
+    Client client;
 
-	/*** CONEXÃO COM O SERVIDOR ***/
-	bool connected = communication.connect_client_server(client);
-
-    if(!connected) {
-        std::cerr << "ERROR, can't connect with server \n";
-        std::exit(1);
-    }
-
-    // Receive backups IPs and sockets
-    // backups IPs and sockets are at Communication_client
-    communication.receive_backups_ip_socket();
-
+    server_alive = true;
     running = true;
-    pthread_mutex_init(&socket_mtx, NULL);
-    pthread_mutex_init(&watched_files_copy_mtx, NULL);
 
-    // Cria diretório de sincronização
-    std::string dir = client.createSyncDir();
-	client.setDir(dir);
+    while(running)
+    {
+        if(backup_ips.size()==0)
+        {
+            std::cout << "\nOpcao1";
 
-    /* Inicializa thread de sincronização*/
-    pthread_create(client.getCheckFilesThread(), NULL, &Client::check_files_helper, &client);
+            pthread_mutex_init(&socket_mtx, NULL);
+            pthread_mutex_init(&watched_files_copy_mtx, NULL);
 
-    client.userInterface();
+        	client.Init(username, host, port, s_cwd);
+
+        	/*** CONEXÃO COM O SERVIDOR ***/
+        	bool connected = communication.connect_client_server(client);
+
+            if(!connected) {
+                std::cerr << "ERROR, can't connect with server \n";
+                std::exit(1);
+            }
+        }
+        // If connecting to a backup
+        else
+        {
+            std::cout << "\nOpcao2";
+            port = port+3;
+            server_alive = true;
+            // Keep trying until connects to one of the backups
+            bool connected = false;
+            while(!connected)
+            {
+                for(int i=0; i<backup_ips.size(); i++)
+                {
+                    std::cout << std::endl << "Trying to connect with " << backup_ips[i] << ":" << port;
+                	client.Init(username, backup_ips[i], port, s_cwd);
+
+                	/*** CONEXÃO COM O SERVIDOR ***/
+                	connected = communication.connect_client_server(client);
+                    if(!connected)
+                        sleep(2);
+                }
+            }
+        }
+        std::cout << "\nConectado!";
+
+        // Receive backups IPs and sockets
+        // backups IPs and sockets are at Communication_client
+        backup_ips = communication.receive_backups_ip_socket();
+
+        // Cria diretório de sincronização
+        std::string dir = client.createSyncDir();
+    	client.setDir(dir);
+
+        /* Inicializa thread de sincronização*/
+        pthread_create(client.getCheckFilesThread(), NULL, &Client::check_files_helper, &client);
+
+        //client.userInterface();
+
+        std::cout << std::endl << "VAI DAR JOIN NA THREAD";
+        pthread_join(*client.getCheckFilesThread(), NULL);
+        std::cout << std::endl << "DEU JOIN NA THREAD";
+        //port += 3;
+    }
 }

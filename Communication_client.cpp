@@ -364,7 +364,7 @@ void Communication_client::receive_header(struct packet *_header, int timeout_se
 	int bytes_received=0;
     while(bytes_received < header_size && !timedout)
     {
-        int n = read(sockfd, buffer, header_size - bytes_received);
+        int n = read(sockfd, &buffer[bytes_received], header_size - bytes_received);
         if (n<0 && timeout_sec>0) {
 			timedout = true;
         }

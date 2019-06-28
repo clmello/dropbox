@@ -320,7 +320,7 @@ long int Communication_client::receive_payload(struct packet *pkt, int type, int
     {
         // read from the socket
         int n = read(sockfd, &buffer[bytes_received], pkt->length - bytes_received);
-        if (n<0 && timeout_sec>0) {
+        if (n<=0 && timeout_sec>0) {
 			timedout = true;
         }
 		else if(n>0)
@@ -365,7 +365,7 @@ void Communication_client::receive_header(struct packet *_header, int timeout_se
     while(bytes_received < header_size && !timedout)
     {
         int n = read(sockfd, &buffer[bytes_received], header_size - bytes_received);
-        if (n<0 && timeout_sec>0) {
+        if (n<=0 && timeout_sec>0) {
 			timedout = true;
         }
 		else if(n>0)

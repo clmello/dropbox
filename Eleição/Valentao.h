@@ -6,13 +6,21 @@
 
 using namespace std;
 
-    int contMSG =1;
-    bool Lider =false;
-
-    void lider(Pacote pacote);
-    void resto(Pacote pacote);
-    void eleicao(int sourceID);
+extern int contMSG;
+extern bool Lider;
+//Cliente cliente;
 
 
+class Valentao {
+public:
+//	Cliente cliente;
+
+	
+	static void lider(Pacote pacote);
+	static void resto(Pacote pacote);
+	static void eleicao(int sourceID);
+
+
+};
 
 #endif

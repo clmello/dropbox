@@ -4,12 +4,23 @@
 
 using std::string;
 
- typedef struct{
+extern int ID;
+extern int liderID;
+extern int numPortas;
+extern int porta[];
 
-        int sourceID;
-        int destinID;
-        string msg;
- }Pacote;
-        
 
- #endif
+
+class Pacote {
+
+public:
+	int sourceID;
+	int destinID;
+	string msg;
+
+	
+	Pacote();
+	Pacote(int sourceID, int destinID, string msg);
+
+};
+#endif

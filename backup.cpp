@@ -16,6 +16,8 @@ Backup::Backup(string main_ip, int main_port)
 
 	bool is_main = false;
 	connected = false;
+	int server_died = false;
+
 	while(!is_main)
 	{
 		cout << "\n\nhost: " << this->main_ip << "\nport: " << this->main_port << "\n\n";
@@ -25,11 +27,34 @@ Backup::Backup(string main_ip, int main_port)
 			if(!connected)
 				sleep(3);
 		}
-		chk_sockfd = connect_chk_server();
+
+		// recebe numero de backups pra se conectar
+		int num_backups = receive_int(main_sockfd);
+		std::cout << "!!!!!!!!!!!!!!!!!!!!! VAI TESTAR RECEBIMENTO DE IPS\n";
+		// se >= 1 -> tenta se conectar com os ips recebidos e depois abre thread pra esperar conexão
+		if(num_backups > 0) {
+			for(int i=0; i < num_backups; i++) {
+				struct packet *pkt = receive_payload(main_sockfd, 10);
+				std::string ip = pkt->_payload;
+				std::cout << "!!!!!!!BACKUP IP: " << ip << "\n";
+				backup_ips.push_back(ip);
+    		}
+		} else
+			std::cout << "No backup on list\n";
+
+		struct bkp_args backup_args;
+		backup_args.obj = this;
+		backup_args.main_check_sockfd = &chk_sockfd;
+		backup_args.server_died = &server_died;
+		// se 0 -> só abre thread pra esperar por conexões
+		std::cout << "Vai abrir a thread pra esperar conexões\n";
+		pthread_create(&connect_backups_thread, NULL, &connect_backups_helper, &backup_args);
+		std::cout << "A thread funcionou\n";
 
 		receive_server_files(main_sockfd);
+		chk_sockfd = connect_chk_server();
 
-		int server_died = false;
+
 		// Create check_server thread
 		struct bkp_args args;
 		args.obj = this;
@@ -40,6 +65,7 @@ Backup::Backup(string main_ip, int main_port)
 		// Receive commands loop
 		receive_commands(main_sockfd, &server_died);
 		pthread_join(chk_thread, NULL);
+		pthread_join(connect_backups_thread, NULL);
 
 		close(main_sockfd);
 		close(chk_sockfd);
@@ -112,6 +138,35 @@ void Backup::close_backup(int main_check_sockfd)
 	close(main_sockfd);
 	close(main_check_sockfd);
 	exit(0);
+}
+
+void *Backup::connect_backups_helper(void* void_args)
+{
+    bkp_args* args = (bkp_args*)void_args;
+    ((Backup*)args->obj)->connect_backup(args->main_check_sockfd, args->server_died);
+    return 0;
+}
+
+void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
+	while(!*server_died) {
+		// INITIALIZE BACKUP CONNECTION SOCKET
+		// Open the socket as non-blocking
+//		if ((backup_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
+//		    printf("ERROR opening socket");
+//		cout << "\nBackup socket open (port " << backup_port << ")";
+
+//		serv_addr_bkp.sin_family = AF_INET;
+//		serv_addr_bkp.sin_port = htons(backup_port);
+//		serv_addr_bkp.sin_addr.s_addr = INADDR_ANY;
+//		bzero(&(serv_addr_bkp.sin_zero), 8);
+
+//		if (bind(backup_accept_sockfd, (struct sockaddr *) &serv_addr_bkp, sizeof(serv_addr_bkp)) < 0)
+//		    printf("ERROR on binding");
+//		listen(backup_accept_sockfd, 5);
+//		bkplen = sizeof(struct sockaddr_in);
+		std::cout << "Thread funcionando \n";
+		sleep(10);
+	}
 }
 
 void Backup::receive_commands(int sockfd, int *server_died)

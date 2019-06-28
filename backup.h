@@ -35,8 +35,15 @@ class Backup
         pthread_t chk_thread;
 		bool connected;
 
+		pthread_t connect_backups_thread;
+
+		std::vectpr<int> backup_sockets;
+		std::vector<std::string> backup_ips;
+
         static void *check_server_helper(void *void_args);
         void check_server(int* main_check_sockfd, int *server_died);
+		static void *connect_backups_helper(void *void_args);
+		void connect_backup(int* main_check_sockfd, int *server_died);
         int connect_backup_to_main();
         int connect_chk_server();
         void close_backup(int main_check_sockfd);

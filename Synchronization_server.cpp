@@ -164,16 +164,6 @@ void Synchronization_server::accept_connections()
 			r_w_backups[1]++;
 			pthread_mutex_unlock(&r_w_backups_mutex);
 
-			std::string s = inet_ntoa(bkp_addr.sin_addr);
-			std::cout << "\nIP BACKUP: " << s;
-			backup_ips.push_back(s);
-			std::cout << "\nSOCKET BACKUP: " << backup_sockfd;
-			backup_sockets.push_back(backup_sockfd);
-			/*
-			struct sockaddr_in *addr_in = (struct sockaddr_in *)res;
-			char *s = inet_ntoa(addr_in->sin_addr);
-			printf("IP address: %s\n", s);
-			 */
 			pthread_mutex_t mtx;
 			backup_mutexes.push_back(mtx);
 			pthread_mutex_init(&backup_mutexes.back(), NULL);
@@ -182,6 +172,23 @@ void Synchronization_server::accept_connections()
 			pthread_mutex_lock(&r_w_backups_mutex);
 			r_w_backups[1]--;
 			pthread_mutex_unlock(&r_w_backups_mutex);
+
+			Communication_server com;
+			com.Init(backup_port, header_size, max_payload);
+			// send size of backup_ips list
+			com.send_int(backup_sockfd, backup_ips.size());
+			// if has ips on the list, send to backup			
+			if(backup_ips.size() > 0) {
+				for(int i=0; i < backup_ips.size(); i++)
+					com.send_string(backup_sockfd, backup_ips[i]);
+			} else
+				std::cout << "No backup on list\n";
+
+			std::string s = inet_ntoa(bkp_addr.sin_addr);
+			std::cout << "\nIP BACKUP: " << s;
+			backup_ips.push_back(s);
+			std::cout << "\nSOCKET BACKUP: " << backup_sockfd;
+			backup_sockets.push_back(backup_sockfd);
 
 			// Send all server files to the backup
 			send_all_files(backup_sockfd);

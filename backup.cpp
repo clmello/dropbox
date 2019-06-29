@@ -2,7 +2,9 @@
 
 using namespace std;
 
-Backup::Backup(string main_ip, int main_port)
+std::vector<int> backup_sockets;
+
+Backup::Backup(string main_ip, int main_port, int backup_port)
 {
 	this->header_size = 10;
 	this->max_payload = 502;
@@ -13,6 +15,7 @@ Backup::Backup(string main_ip, int main_port)
 	this->header_address = (size_t)header;
 	this->main_ip = main_ip;
 	this->main_port = main_port;
+	this->backup_port = backup_port;
 
 	bool is_main = false;
 	connected = false;
@@ -38,6 +41,8 @@ Backup::Backup(string main_ip, int main_port)
 				std::string ip = pkt->_payload;
 				std::cout << "!!!!!!!BACKUP IP: " << ip << "\n";
 				backup_ips.push_back(ip);
+				// aqui tenta conectar?
+				//connect_backup_to_backup(ip);
     		}
 		} else
 			std::cout << "No backup on list\n";
@@ -53,7 +58,6 @@ Backup::Backup(string main_ip, int main_port)
 
 		receive_server_files(main_sockfd);
 		chk_sockfd = connect_chk_server();
-
 
 		// Create check_server thread
 		struct bkp_args args;
@@ -148,22 +152,39 @@ void *Backup::connect_backups_helper(void* void_args)
 }
 
 void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
+	// 1. inicializa o socket da conexão com backup
+	// 2. fica esperando por uma conexão de outro backup com id maior (ex: backup de id 0 que o backup de id 1 se conecte)
+	// 3. depois de se conectar, adiciona o socket na lista de sockets
+	
+	struct sockaddr_in bkp_addr_bkp, bkp_addr;
+	socklen_t bkplen;
+
+	// INITIALIZE BACKUP CONNECTION SOCKET
+	// Open the socket as non-blocking
+	if ((bkp_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
+	    printf("ERROR opening socket");
+	cout << "\nBackup socket open (port " << backup_port << ")";
+
+	bkp_addr_bkp.sin_family = AF_INET;
+	bkp_addr_bkp.sin_port = htons(backup_port);
+	bkp_addr_bkp.sin_addr.s_addr = INADDR_ANY;
+	bzero(&(bkp_addr_bkp.sin_zero), 8);
+
+	if (bind(bkp_accept_sockfd, (struct sockaddr *) &bkp_addr_bkp, sizeof(bkp_addr_bkp)) < 0)
+	    printf("ERROR on binding");
+	listen(bkp_accept_sockfd, 5);
+	bkplen = sizeof(struct sockaddr_in);
+	
 	while(!*server_died) {
-		// INITIALIZE BACKUP CONNECTION SOCKET
-		// Open the socket as non-blocking
-//		if ((backup_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
-//		    printf("ERROR opening socket");
-//		cout << "\nBackup socket open (port " << backup_port << ")";
+		int backup_sockfd = -1;
+		std::cout << "Esperando conexão\n";
+		backup_sockfd = accept(bkp_accept_sockfd, (struct sockaddr *) &bkp_addr, &bkplen);
+		if(backup_sockfd >= 0) {
+			std::cout << "Conectou!\n";
+			// add sockfd to list
+			backup_sockets.push_back(backup_sockfd);
+		}
 
-//		serv_addr_bkp.sin_family = AF_INET;
-//		serv_addr_bkp.sin_port = htons(backup_port);
-//		serv_addr_bkp.sin_addr.s_addr = INADDR_ANY;
-//		bzero(&(serv_addr_bkp.sin_zero), 8);
-
-//		if (bind(backup_accept_sockfd, (struct sockaddr *) &serv_addr_bkp, sizeof(serv_addr_bkp)) < 0)
-//		    printf("ERROR on binding");
-//		listen(backup_accept_sockfd, 5);
-//		bkplen = sizeof(struct sockaddr_in);
 		std::cout << "Thread funcionando \n";
 		sleep(10);
 	}
@@ -278,6 +299,44 @@ int Backup::connect_backup_to_main()
 	}
 
 	cout << endl << "Backup connected";
+	return sockfd;
+}
+
+int Backup::connect_backup_to_backup(string ip) {
+	int sockfd;
+	cout << endl << endl << "Tentando conectar com " << ip << ":" << backup_port << endl << endl;
+	struct sockaddr_in other_backup_addr;
+    struct hostent *other_backup = gethostbyname(ip.c_str());
+
+	if (other_backup == NULL)
+		std::cerr << "ERROR, no such host\n";
+	else
+	{
+	    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	    if (sockfd == -1)
+			std::cerr << "ERROR opening socket\n";
+		else
+		{
+			other_backup_addr.sin_family = AF_INET;
+			other_backup_addr.sin_port = htons(backup_port);
+			other_backup_addr.sin_addr = *((struct in_addr *)other_backup->h_addr);
+			// acho que ainda é 8??
+			bzero(&(other_backup_addr.sin_zero), 8);
+
+			if (connect(sockfd,(struct sockaddr *) &other_backup_addr,sizeof(other_backup_addr)) < 0)
+				std::cerr << "ERROR connecting with server\n";
+			else
+				connected = true;
+			// Make socket non-blocking
+			int fl = fcntl(sockfd, F_GETFL, 0);
+			fcntl(sockfd, F_SETFL, fl | O_NONBLOCK);
+
+			backup_sockets.push_back(sockfd);
+		}
+	}
+
+	cout << endl << "Backup connected";
+
 	return sockfd;
 }
 

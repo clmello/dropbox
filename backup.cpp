@@ -20,6 +20,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 	bool is_main = false;
 	connected = false;
 	int server_died = false;
+	leader_id = -1; // por enquanto nao tem lider 
 
 	while(!is_main)
 	{
@@ -51,6 +52,8 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		} else
 			std::cout << "No backup on list\n";
 
+		// o backup guarda seu socket como -1, porque ai tu sabe qual o id dele (o lugar dele na lista)
+		backup_sockets.push_back(-1);
 		struct bkp_args backup_args;
 		backup_args.obj = this;
 		backup_args.main_check_sockfd = &chk_sockfd;
@@ -81,6 +84,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		cout << endl << endl << "Electing new main server" << endl;
 		// TODO: eleição
 		// A função election() deve retornar "" para o novo main server e "IP_do_novo_main"
+		
 		//para todos os outros
 		// string new_host = election();
 		//----------------------------
@@ -183,7 +187,7 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 	while(!*server_died) {
 		int backup_sockfd = -1;
 		backup_sockfd = accept(bkp_accept_sockfd, (struct sockaddr *) &bkp_addr, &bkplen);
-		if(backup_sockfd >= 0) {
+		if(backup_sockfd > 0) {
 			std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
 			std::cout << "!!!!!!!!!!!!!!!!!!! CONECTOU !!!!!!!!!!!!!!!!!!!!!!!!\n";
 			// add sockfd to list
@@ -191,6 +195,14 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 		}
 	}
 	std::cout << "Thread funcionando \n";
+	for(int i; i < backup_sockets.size(); i++) {
+		cout << "\nbackup sockfd:" << backup_sockets[i];
+	}
+
+}
+
+void Backup::election() {
+	
 }
 
 void Backup::receive_commands(int sockfd, int *server_died)

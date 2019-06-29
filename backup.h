@@ -16,10 +16,11 @@ struct bkp_args
 class Backup
 {
     public:
-        Backup(string main_ip, int main_port);
+        Backup(string main_ip, int main_port, int backup_port);
     private:
         string main_ip;
         int main_port;
+        int backup_port;
         int main_sockfd;
         int chk_sockfd;
 		int header_size;
@@ -34,10 +35,11 @@ class Backup
         string dir;
         pthread_t chk_thread;
 		bool connected;
+        int bkp_accept_sockfd;
 
 		pthread_t connect_backups_thread;
 
-		std::vector<int> backup_sockets;
+		int leader_id;
 		std::vector<std::string> backup_ips;
 
         static void *check_server_helper(void *void_args);
@@ -45,8 +47,10 @@ class Backup
 		static void *connect_backups_helper(void *void_args);
 		void connect_backup(int* main_check_sockfd, int *server_died);
         int connect_backup_to_main();
+        int connect_backup_to_backup(string ip);
         int connect_chk_server();
         void close_backup(int main_check_sockfd);
+		void election();
         void receive_commands(int sockfd, int *server_died);
         string create_user_folder(string username);
         int receive_int(int sockfd);

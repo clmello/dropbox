@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 	{
 		// Start the backup
 		cout << "\n\nbackup server\n\n";
-		Backup backup(host, port);
+		Backup backup(host, port, port+1);
 	}
 
 	return 0;

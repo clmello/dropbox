@@ -13,6 +13,15 @@ struct bkp_args
     int *server_died = NULL;
 };
 
+struct backup_info {
+	string ip;
+	int sockfd;
+	int id;
+};
+
+vector<backup_info> backups;
+
+
 class Backup
 {
     public:
@@ -36,11 +45,11 @@ class Backup
         pthread_t chk_thread;
 		bool connected;
         int bkp_accept_sockfd;
+		int backup_id;
 
 		pthread_t connect_backups_thread;
 
-		int leader_id;
-		std::vector<std::string> backup_ips;
+		bool leader;
 
         static void *check_server_helper(void *void_args);
         void check_server(int* main_check_sockfd, int *server_died);
@@ -50,10 +59,10 @@ class Backup
         int connect_backup_to_backup(string ip);
         int connect_chk_server();
         void close_backup(int main_check_sockfd);
-		void election();
+		int election(struct backup_info this_backup);
         void receive_commands(int sockfd, int *server_died);
         string create_user_folder(string username);
-        int receive_int(int sockfd);
+        int receive_int(int sockfd, int timeout);
 		packet* receive_payload(int sockfd, int timeout_sec);
 		packet* receive_header(int sockfd, int timeout_sec);
 		void receive_file(int sockfd, string path);

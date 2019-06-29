@@ -1,8 +1,10 @@
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "backup.h"
 
 using namespace std;
-
-std::vector<int> backup_sockets;
 
 Backup::Backup(string main_ip, int main_port, int backup_port)
 {
@@ -20,7 +22,11 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 	bool is_main = false;
 	connected = false;
 	int server_died = false;
-	leader_id = -1; // por enquanto nao tem lider 
+	leader = false; // ṕor enquanto esse backup não é o lider
+	backup_id = 0;
+
+	struct backup_info bkp_info;
+	struct backup_info this_backup;
 
 	while(!is_main)
 	{
@@ -33,7 +39,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		}
 
 		// recebe numero de backups pra se conectar
-		int num_backups = receive_int(main_sockfd);
+		int num_backups = receive_int(main_sockfd, 30);
 		std::cout << "!!!!!!!!!!!!!!!!!!!!! VAI TESTAR RECEBIMENTO DE IPS\n";
 		// se >= 1 -> tenta se conectar com os ips recebidos e depois abre thread pra esperar conexão
 		if(num_backups > 0) {
@@ -41,19 +47,26 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 				struct packet *pkt = receive_payload(main_sockfd, 10);
 				std::string ip = pkt->_payload;
 				std::cout << "!!!!!!!BACKUP IP: " << ip << "\n";
-				backup_ips.push_back(ip);
-				// aqui tenta conectar?
 				int c = connect_backup_to_backup(ip);
 				if(c > 0 ){
 					std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
 					std::cout << "!!!!!!!!!!!!!!!!! BACKUP CONNECTED !!!!!!!!!!!!!!!!!!\n";
 				}
+				backup_id++;
     		}
 		} else
 			std::cout << "No backup on list\n";
 
 		// o backup guarda seu socket como -1, porque ai tu sabe qual o id dele (o lugar dele na lista)
-		backup_sockets.push_back(-1);
+		
+		//bkp_info.ip = "";
+		//bkp_info.sockfd = -1;
+		//bkp_info.id = backup_id;
+		//backups.push_back(bkp_info);
+		this_backup.ip = "";
+		this_backup.sockfd = -1;
+		this_backup.id = backup_id;
+		backup_id++;
 		struct bkp_args backup_args;
 		backup_args.obj = this;
 		backup_args.main_check_sockfd = &chk_sockfd;
@@ -87,6 +100,10 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		
 		//para todos os outros
 		// string new_host = election();
+		int leader = election(this_backup);
+		cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
+		cout << "\n!!!!!!!!!!!!!!!!!!!!!! LEADER: " << leader;
+		cout << endl;
 		//----------------------------
 		// Essa linha é só p/ testes
 		string new_host = "";
@@ -163,7 +180,7 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 	// 1. inicializa o socket da conexão com backup
 	// 2. fica esperando por uma conexão de outro backup com id maior (ex: backup de id 0 que o backup de id 1 se conecte)
 	// 3. depois de se conectar, adiciona o socket na lista de sockets
-	
+	struct backup_info bkp_info;
 	struct sockaddr_in bkp_addr_bkp, bkp_addr;
 	socklen_t bkplen;
 
@@ -191,17 +208,73 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 			std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
 			std::cout << "!!!!!!!!!!!!!!!!!!! CONECTOU !!!!!!!!!!!!!!!!!!!!!!!!\n";
 			// add sockfd to list
-			backup_sockets.push_back(backup_sockfd);
+
+			std::string ip = inet_ntoa(bkp_addr.sin_addr);
+			bkp_info.ip = ip;
+			bkp_info.sockfd = backup_sockfd;
+			bkp_info.id = backup_id;
+			backups.push_back(bkp_info);
+			
+			for(int i; i < backups.size(); i++) {
+				cout << "\nbackup ip:" << backups[i].ip;
+				cout << "\nbackup sockfd:" << backups[i].sockfd;
+				cout << "\nbackup id:" << backups[i].id;
+				
+			}
+			backup_id++;
 		}
 	}
 	std::cout << "Thread funcionando \n";
-	for(int i; i < backup_sockets.size(); i++) {
-		cout << "\nbackup sockfd:" << backup_sockets[i];
-	}
-
 }
 
-void Backup::election() {
+int Backup::election(struct backup_info this_backup) {
+	struct packet *pkt;
+	Communication_server com;
+	com.Init(backup_port, 10, 502);
+	vector<int> received_ids;
+	int leader_id;
+
+	leader = true;
+	leader_id = this_backup.id;
+
+	// se for o menor id, manda a mensagem eleição
+	if(this_backup.id == 0) {
+		for(int i = this_backup.id + 1; i < backups.size(); i++) {
+			com.send_int(backups[i].sockfd, this_backup.id);
+			int id = receive_int(backups[i].sockfd, this_backup.id * 10);
+			received_ids.push_back(id);
+		}
+
+		// os ids que tem -10 é porque deu timeout
+		for(int i = 0; i < received_ids.size(); i++) {
+			if(received_ids[i] != -10) {
+				leader = false;
+				leader_id = received_ids[i];
+			}
+		}
+	} else { // Se não for o backup de menor id, fica esperando por uma mensagem
+		for(int i = 0; i < this_backup.id; i++) {
+			int id = receive_int(backups[i].sockfd, this_backup.id * 10); 
+			com.send_int(backups[i].sockfd, backups[i].id);
+			received_ids.push_back(id);
+		}
+
+		for(int i = this_backup.id + 1; i < backups.size(); i++) {
+			com.send_int(backups[i].sockfd, backups[i].id);
+			int id = receive_int(backups[i].sockfd, this_backup.id * 10);
+		}
+
+		for(int i = 0; i < received_ids.size(); i++) {
+			leader = true;
+			if(received_ids[i] > this_backup.id) {
+				leader = false;
+				leader_id = received_ids[i];
+			}
+		}
+		
+	}
+
+	return leader_id;
 	
 }
 
@@ -211,7 +284,7 @@ void Backup::receive_commands(int sockfd, int *server_died)
 	while(!server_closing && !*server_died)
 	{
 		cout << endl << sockfd << ": waiting for command";
-		int command = receive_int(sockfd);
+		int command = receive_int(sockfd, 30);
 		switch(command)
 		{
 			case 1: // Upload to backup
@@ -317,6 +390,7 @@ int Backup::connect_backup_to_main()
 
 int Backup::connect_backup_to_backup(string ip) {
 	int sockfd;
+	struct backup_info bkp_info;
 	cout << endl << endl << "Tentando conectar com " << ip << ":" << backup_port << endl << endl;
 	struct sockaddr_in other_backup_addr;
     struct hostent *other_backup = gethostbyname(ip.c_str());
@@ -344,7 +418,10 @@ int Backup::connect_backup_to_backup(string ip) {
 			int fl = fcntl(sockfd, F_GETFL, 0);
 			fcntl(sockfd, F_SETFL, fl | O_NONBLOCK);
 
-			backup_sockets.push_back(sockfd);
+			bkp_info.ip = ip;
+			bkp_info.sockfd = sockfd;
+			bkp_info.id = backup_id;
+			backups.push_back(bkp_info);
 		}
 	}
 
@@ -381,9 +458,12 @@ int Backup::connect_chk_server()
 	return sockfd;
 }
 
-int Backup::receive_int(int sockfd)
+int Backup::receive_int(int sockfd, int timeout)
 {
-	struct packet *pkt = receive_payload(sockfd, 30);
+	struct packet *pkt = receive_payload(sockfd, timeout);
+	if(pkt->type == 10) {
+		return -10;
+	}
 	int command;
 	memcpy(&command, pkt->_payload, pkt->length);
 	return command;
@@ -516,7 +596,7 @@ void Backup::receive_server_files(int sockfd)
     string base_path = string(homedir) + syncdir;
 
 	// Receive the number of clients
-	int num_clients = receive_int(sockfd);
+	int num_clients = receive_int(sockfd, 30);
 	cout << endl << "The server has " << num_clients << " clients";
 	for(int i=0; i<num_clients; i++)
 	{
@@ -527,7 +607,7 @@ void Backup::receive_server_files(int sockfd)
 		// Create the user folder, if it doesn't already exist
 		create_user_folder(username);
 		// Receive the number of files
-		int num_files = receive_int(sockfd);
+		int num_files = receive_int(sockfd, 30);
 		cout << endl << "The user has " << num_files << " files";
 		for(int j=0; j<num_files; j++)
 		{

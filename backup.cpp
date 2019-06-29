@@ -175,19 +175,17 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 	listen(bkp_accept_sockfd, 5);
 	bkplen = sizeof(struct sockaddr_in);
 	
+	std::cout << "Esperando conexão\n";
 	while(!*server_died) {
 		int backup_sockfd = -1;
-		std::cout << "Esperando conexão\n";
 		backup_sockfd = accept(bkp_accept_sockfd, (struct sockaddr *) &bkp_addr, &bkplen);
 		if(backup_sockfd >= 0) {
 			std::cout << "Conectou!\n";
 			// add sockfd to list
 			backup_sockets.push_back(backup_sockfd);
 		}
-
-		std::cout << "Thread funcionando \n";
-		sleep(10);
 	}
+	std::cout << "Thread funcionando \n";
 }
 
 void Backup::receive_commands(int sockfd, int *server_died)

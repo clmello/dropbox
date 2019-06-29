@@ -177,7 +177,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 time_t mtime = receive_payload(sockfd, &pkt, 2);
                 // Save mtime to file
 				cout << endl << "file path: " << path;
-                mtime_to_file(path, mtime, user_files_mutex);
+                mtime_to_file(path, mtime, user_files_mutex, username);
 
 				// This function locks the file mutex as a writer
 				start_writing_file(path, user_files, user_files_mutex, mtime);
@@ -1139,15 +1139,14 @@ void *Communication_server::signal_server_alive(int sockfd)
 	}
 }
 
-void Communication_server::mtime_to_file(string path, time_t mtime, pthread_mutex_t *user_files_mutex)
+void Communication_server::mtime_to_file(string path, time_t mtime, pthread_mutex_t *user_files_mutex, string username)
 {
 	// Lock mutex
 	pthread_mutex_lock(user_files_mutex);
 
-	// Remove filename from path
-	string path_txt = path.substr(0, path.find_last_of("\\/")+1);
-	// Add new filename
-	path_txt += "mtimes";
+	// Set txt path
+	string path_txt = getenv("HOME");
+	path_txt += "/server_sync_dir_" + username + "/" + "mtimes";
 
 	ifstream ifile;
 	ifile.open(path_txt.c_str());

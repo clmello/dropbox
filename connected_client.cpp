@@ -12,6 +12,19 @@ void Connected_client::init(string username, int sockfd, int num_connections, in
 	if (pthread_mutex_init(&user_files_mutex, NULL) != 0)
         cout << endl << "Error on mutex_init";
 
+    // Create (or open) mtimes file
+	/*mtimes_file_path = getenv("HOME");
+	mtimes_file_path += "/server_sync_dir_" + username + "/" + "mtimes";
+    ifstream mtimes_file(mtimes_file_path.c_str());
+    bool exists = mtimes_file.good();
+    cout << endl << "exists: " << exists;
+    cout << endl << "num_connect: " << num_connections;
+	mtimes_file.close();
+    // If the file exists and no other client with this username is connected,
+    //get information from the mtimes file
+    if(exists && num_connections==1)
+    	files_from_disk();*/
+
 	com.Init(port, header_size, max_payload);
 }
 
@@ -73,3 +86,26 @@ int Connected_client::new_connection()
 }
 
 void Connected_client::remove_connection() {num_connections--;}
+
+void Connected_client::files_from_disk()
+{
+	// The structure of the file is:
+	//path_to_file1 mtime1
+	//path_to_file2 mtime2
+	//...
+	ifstream mtimes_file(mtimes_file_path.c_str());
+	string path;
+	time_t mtime;
+	while(mtimes_file >> path >> mtime)
+	{
+		cout << endl << "Reading mtimes file... ";
+		cout << endl << "path: " << path << endl << "mtime: " << mtime;
+		cout << endl;
+		File_server new_file(path, mtime);
+		user_files.push_back(new_file);
+
+		string test = user_files[0].get_path();
+		cout << endl << "test: |" << test << "|";
+		cout << endl;
+	}
+}

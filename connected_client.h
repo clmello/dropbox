@@ -30,7 +30,6 @@ class Connected_client{
 
 		// Returns num_connections+1 if num_connections+1 < max_connections, -1 otherwise
 		int new_connection();
-
 		void remove_connection();
 
 		Communication_server com;
@@ -40,6 +39,7 @@ class Connected_client{
 		int sockfd;
 		int num_connections;
 		int max_connections;
+		string mtimes_file_path;
 
 		pthread_t thread;
 
@@ -47,6 +47,8 @@ class Connected_client{
 		vector<File_server> *user_files_pointer;
 		pthread_mutex_t user_files_mutex;
 		pthread_mutex_t *user_files_mutex_pointer;
+		
+		void files_from_disk();
 
 };
 

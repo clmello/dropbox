@@ -37,7 +37,7 @@ class Backup
 
 		pthread_t connect_backups_thread;
 
-		std::vectpr<int> backup_sockets;
+		std::vector<int> backup_sockets;
 		std::vector<std::string> backup_ips;
 
         static void *check_server_helper(void *void_args);

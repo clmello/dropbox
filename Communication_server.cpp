@@ -112,12 +112,32 @@ long int Communication_server::receive_payload(int sockfd, struct packet *pkt, i
 void *Communication_server::receive_commands(int sockfd, string username, int *thread_finished, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex, vector<int> *backup_sockets, vector<pthread_mutex_t> *backup_mutexes, pthread_mutex_t *r_w_backups_mutex, vector<int> *r_w_backups)
 {
     bool close_thread = false;
-	//printf("\n\nENDERECO DO USER_FILES: %p\n\n", user_files);
+
+	files_from_disk(username, user_files, user_files_mutex);
+
+	//--------------------------------------------------------------
+	// Send username to all backups
+	//--------------------------------------------------------------
+	// We need to guarantee that no new backups will connect while
+	//the next for executes
+	/*lock_rw_mutex(r_w_backups_mutex, r_w_backups);
+
+	// Send username
+	for(int i=0; i<backup_mutexes->size(); i++)
+	{
+		// Send command
+		send_int((*backup_sockets)[i], 3);
+		// Send username
+		send_string((*backup_sockets)[i], username);
+	}
+
+	// Stop reading
+	unlock_rw_mutex(r_w_backups_mutex, r_w_backups);*/
+	//--------------------------------------------------------------
+
+
     while(!close_thread) // TODO: ENQUANTO USUARIO NÃO FECHA
     {
-		//vector<File_server> user_files_ = *user_files;
-		//cout << "\n\nSIZE OF USER FILES: " << user_files->size() << endl;
-		//cout << "SIZE OF USER FILES_: " << user_files_.size() << endl;
         // Wait for a command
         cout << endl << sockfd << ": waiting for command";
         struct packet pkt;
@@ -127,8 +147,6 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 		// Here, after every command the server sends a code (int) to the user:
 		//  1: everything OK. The command will be executed;
 		// -1: server is closing. The command will not be executed;
-		// -2: file not found. The command will not be executed;
-		//TODO: NÃO MAIS!!! ^ ISSO IA DAR PROBLEMA! NÃO TEM O FILE_NOT_FOUND!
         if(closing_server){
             send_int(sockfd, -1);
             command = 7;
@@ -157,6 +175,9 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 
                 // Receive mtime
                 time_t mtime = receive_payload(sockfd, &pkt, 2);
+                // Save mtime to file
+				cout << endl << "file path: " << path;
+                mtime_to_file(path, mtime, user_files_mutex);
 
 				// This function locks the file mutex as a writer
 				start_writing_file(path, user_files, user_files_mutex, mtime);
@@ -271,7 +292,7 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 				// We need to guarantee that no new backups will connect while
 				//the next for executes
 				lock_rw_mutex(r_w_backups_mutex, r_w_backups);
-				
+
 				// Send command to all backups
 				for(int i=0; i<backup_mutexes->size(); i++)
 				{
@@ -1116,4 +1137,119 @@ void *Communication_server::signal_server_alive(int sockfd)
 		send_string(sockfd, "alive");
 		sleep(5);
 	}
+}
+
+void Communication_server::mtime_to_file(string path, time_t mtime, pthread_mutex_t *user_files_mutex)
+{
+	// Lock mutex
+	pthread_mutex_lock(user_files_mutex);
+
+	// Remove filename from path
+	string path_txt = path.substr(0, path.find_last_of("\\/")+1);
+	// Add new filename
+	path_txt += "mtimes";
+
+	ifstream ifile;
+	ifile.open(path_txt.c_str());
+	string buff;
+	vector <string> content;
+	bool found = false;
+
+	bool exists = ifile.good();
+
+	// Read whole file
+	for(int i; ifile >> buff && exists; i++)
+	{
+		// save name
+		content.push_back(buff);
+		if(buff == path)
+			found = true;
+		content.push_back(" ");
+		// save mtime
+		ifile >> buff;
+		content.push_back(buff);
+		content.push_back("\n");
+	}
+	//if(exists)
+	//	content.pop_back();
+
+	// If there is no entry for the path
+	if(!found){
+		ifile.close();
+		ofstream ofile;
+		ofile.open(path_txt.c_str(), std::fstream::app);
+		// Append info to the end of file
+		ofile << path << " " << mtime << "\n";
+		ofile.close();
+	}
+	// If there is an entry, edit it
+	else{
+		ifile.close();
+		ofstream ofile;
+		ofile.open(path_txt.c_str(), std::fstream::trunc);
+		// Rewrite whole file
+		for(int i=0; i<content.size(); i++)
+		{
+			// path
+			ofile << content[i];
+			// Replace the mtime for the path
+			if(content[i] == path)
+				content[i+2] = mtime;
+			i++;
+			// " "
+			ofile << content[i];
+			i++;
+			// mtime
+			ofile << content[i];
+		}
+		ofile.close();
+	}
+	// Unlock mutex
+	pthread_mutex_unlock(user_files_mutex);
+}
+
+void Communication_server::files_from_disk(string username, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex)
+{
+	// Lock mutex
+	pthread_mutex_lock(user_files_mutex);
+
+	// Create (or open) mtimes file
+	string mtimes_file_path = getenv("HOME");
+	mtimes_file_path += "/server_sync_dir_" + username + "/" + "mtimes";
+    ifstream mtimes_file(mtimes_file_path.c_str());
+    bool exists = mtimes_file.good();
+    // If the file exists, get information from the mtimes file
+    if(exists)
+	{
+		// The structure of the file is:
+		//path_to_file1 mtime1
+		//path_to_file2 mtime2
+		//...
+		ifstream mtimes_file(mtimes_file_path.c_str());
+		string path;
+		time_t mtime;
+		//mtimes_file >> path >> mtime;
+		//cout << endl << "path: " << path << endl << "mtime: " << mtime;
+		while(mtimes_file >> path >> mtime)
+		{
+			// Check if the file is in the vector
+			bool found = false;
+			for(int j=0; j<user_files->size(); j++)
+			{
+				if((*user_files)[j].get_path() == path){
+					found = true;
+					break;
+				}
+			}
+			if(!found)
+			{
+				File_server new_file(path, mtime);
+				user_files->push_back(new_file);
+			}
+		}
+	}
+	mtimes_file.close();
+
+	// Unlock mutex
+	pthread_mutex_unlock(user_files_mutex);
 }

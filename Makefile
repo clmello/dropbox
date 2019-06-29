@@ -27,3 +27,6 @@ dropboxclient: $(UTILS_CLIENT) $(CLIENT_O)
 
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean:
+	rm -rf *.o dropboxserver

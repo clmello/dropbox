@@ -455,7 +455,7 @@ int main(int argc, char **argv) {
         /* Inicializa thread de sincronização*/
         pthread_create(client.getCheckFilesThread(), NULL, &Client::check_files_helper, &client);
 
-        //client.userInterface();
+        client.userInterface();
 
         std::cout << std::endl << "VAI DAR JOIN NA THREAD";
         pthread_join(*client.getCheckFilesThread(), NULL);

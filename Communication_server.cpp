@@ -205,6 +205,8 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 					send_string((*backup_sockets)[i], username);
 					// Send filename
 					send_string((*backup_sockets)[i], filename);
+					// Send mtime
+					send_mtime((*backup_sockets)[i], mtime);
 					// Send file
 					send_file((*backup_sockets)[i], path);
 				}
@@ -227,9 +229,6 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 path = path + "/server_sync_dir_" + username + "/" + filename;
                 //cout << "\npath: " << path;
 
-				//TODO: Testa se arquivo existe. Se não existe, retorna erro e não faz mais nada daqui do download
-
-				//TODO: Pede para ler arquivo (mutex)
 				// This function locks the file mutex as a reader
 				int return_value = start_reading_file(path, user_files, user_files_mutex);
 
@@ -251,7 +250,6 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 // Send file
                 send_file(sockfd, path);
 
-				//TODO: libera leitura do arquivo
 				// This functions unlocks the mutex as a reader
 				done_reading_file(path, user_files, user_files_mutex);
 
@@ -268,7 +266,6 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
                 path = path + "/server_sync_dir_" + username + "/" + filename;
                 cout << "String path: " << path;
 
-				//TODO: pede para escrever no arquivo
 				// This function locks the file mutex as a writer
 				start_writing_file(path, user_files, user_files_mutex, 0);
 
@@ -307,6 +304,9 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 				// Stop reading
 				unlock_rw_mutex(r_w_backups_mutex, r_w_backups);
 				//--------------------------------------------------------------
+
+				// Remove entry from txt
+				delete_mtime_from_file(path, username);
 
                 break;
             }
@@ -1251,4 +1251,70 @@ void Communication_server::files_from_disk(string username, vector<File_server> 
 
 	// Unlock mutex
 	pthread_mutex_unlock(user_files_mutex);
+}
+
+void Communication_server::delete_mtime_from_file(string path, string username)
+{
+	cout << endl;
+	// Set txt path
+	string path_txt = getenv("HOME");
+	path_txt += "/server_sync_dir_" + username + "/" + "mtimes";
+
+	ifstream ifile;
+	ifile.open(path_txt.c_str());
+	string buff;
+	vector <string> content;
+	//bool found = false;
+
+	//bool exists = ifile.good();
+
+	// Read whole file
+	for(int i; ifile >> buff; i++)
+	{
+		// save name
+		content.push_back(buff);
+		//if(buff == path)
+		//	found = true;
+		content.push_back(" ");
+		// save mtime
+		ifile >> buff;
+		content.push_back(buff);
+		content.push_back("\n");
+	}
+
+	// Remove entry
+	ifile.close();
+	ofstream ofile;
+	ofile.open(path_txt.c_str(), std::fstream::trunc);
+	// Rewrite whole file
+	int bytes_written=0;
+	for(int i=0; i<content.size(); i++)
+	{
+		if(content[i] != path)
+		{
+			// path
+			ofile << content[i];
+			bytes_written++;
+			i++;
+			// " "
+			ofile << content[i];
+			bytes_written++;
+			i++;
+			// mtime
+			ofile << content[i];
+			bytes_written++;
+			i++;
+			// "\n"
+			if(i<content.size()){
+				ofile << content[i];
+				bytes_written++;
+			}
+		}
+		else
+			i+=3;
+	}
+	ofile.close();
+
+	if(bytes_written==0)
+		remove(path_txt.c_str());
 }

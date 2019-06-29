@@ -67,6 +67,8 @@ class Backup
 		packet* receive_header(int sockfd, int timeout_sec);
 		void receive_file(int sockfd, string path);
 		void receive_server_files(int sockfd);
+		void mtime_to_file(string path, time_t mtime, string username);
+		void delete_mtime_from_file(string path, string username);
 };
 
 

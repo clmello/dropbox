@@ -305,8 +305,14 @@ void Backup::receive_commands(int sockfd, int *server_died)
                 string filename = pkt->_payload;
 				filename.resize(pkt->length);
 
+				// TODO: Receive mtime
+                pkt = receive_payload(sockfd, 30);
+				time_t mtime= *(time_t*)pkt->_payload;
+
 				// Receive file
 				receive_file(sockfd, (path+"/"+filename));
+
+				mtime_to_file((path+"/"+filename), mtime, username);
 
 				break;
 			}
@@ -329,6 +335,8 @@ void Backup::receive_commands(int sockfd, int *server_died)
 			    string syncdir = "/bkp_sync_dir_" + username;
 			    string path = string(homedir) + syncdir + "/" + filename;
 				remove(path.c_str());
+
+				delete_mtime_from_file(path, username);
 
 				break;
 			}
@@ -622,4 +630,138 @@ void Backup::receive_server_files(int sockfd)
 			receive_file(sockfd, path);
 		}
 	}
+}
+
+void Backup::mtime_to_file(string path, time_t mtime, string username)
+{
+	// Set txt path
+	string path_txt = getenv("HOME");
+	path_txt += "/bkp_sync_dir_" + username + "/" + "mtimes";
+
+	ifstream ifile;
+	ifile.open(path_txt.c_str());
+	string buff;
+	vector <string> content;
+	bool found = false;
+
+	bool exists = ifile.good();
+
+	// Read whole file
+	for(int i; ifile >> buff && exists; i++)
+	{
+		// save name
+		content.push_back(buff);
+		if(buff == path)
+			found = true;
+		content.push_back(" ");
+		// save mtime
+		ifile >> buff;
+		content.push_back(buff);
+		content.push_back("\n");
+	}
+
+	// If there is no entry for the path
+	if(!found){
+		ifile.close();
+		ofstream ofile;
+		ofile.open(path_txt.c_str(), std::fstream::app);
+		// Append info to the end of file
+		ofile << path << " " << mtime << "\n";
+		ofile.close();
+	}
+	// If there is an entry, edit it
+	else{
+		ifile.close();
+		ofstream ofile;
+		ofile.open(path_txt.c_str(), std::fstream::trunc);
+		// Rewrite whole file
+		for(int i=0; i<content.size(); i++)
+		{
+			// path
+			ofile << content[i];
+			// Replace the mtime for the path
+			if(content[i] == path)
+				content[i+2] = mtime;
+			i++;
+			// " "
+			ofile << content[i];
+			i++;
+			// mtime
+			ofile << content[i];
+			i++;
+			// "\n"
+			if(i<content.size())
+				ofile << content[i];
+		}
+		ofile.close();
+	}
+}
+
+void Backup::delete_mtime_from_file(string path, string username)
+{
+	cout << endl << "ENTREI NO DELETE_MTIME";
+	cout << endl;
+	// Set txt path
+	string path_txt = getenv("HOME");
+	path_txt += "/bkp_sync_dir_" + username + "/" + "mtimes";
+
+	ifstream ifile;
+	ifile.open(path_txt.c_str());
+	string buff;
+	vector <string> content;
+	//bool found = false;
+
+	//bool exists = ifile.good();
+
+	// Read whole file
+	for(int i; ifile >> buff; i++)
+	{
+		// save name
+		content.push_back(buff);
+		//if(buff == path)
+		//	found = true;
+		content.push_back(" ");
+		// save mtime
+		ifile >> buff;
+		content.push_back(buff);
+		content.push_back("\n");
+	}
+
+	// Remove entry
+	ifile.close();
+	ofstream ofile;
+	ofile.open(path_txt.c_str(), std::fstream::trunc);
+	// Rewrite whole file
+	int bytes_written=0;
+	for(int i=0; i<content.size(); i++)
+	{
+		cout << endl << "i: " << i;
+		cout << endl << content[i] << content[i+1] << content[i+2] << content[i+3];
+		if(content[i] != path)
+		{
+			// path
+			ofile << content[i];
+			bytes_written++;
+			i++;
+			// " "
+			ofile << content[i];
+			bytes_written++;
+			i++;
+			// mtime
+			ofile << content[i];
+			bytes_written++;
+			i++;
+			// "\n"
+			if(i<content.size()){
+				ofile << content[i];
+				bytes_written++;
+			}
+		}
+		else
+			i+=3;
+	}
+	ofile.close();
+
+	if(bytes_written==0)
+		remove(path_txt.c_str());
 }

@@ -96,6 +96,7 @@ class Communication_server
 		void unlock_rw_mutex(pthread_mutex_t *r_w_backups_mutex, vector<int> *r_w_backups);
 		void mtime_to_file(string path, time_t mtime, pthread_mutex_t *user_files_mutex, string username);
 		void files_from_disk(string username, vector<File_server> *user_files, pthread_mutex_t *user_files_mutex);
+		void delete_mtime_from_file(string path, string username);
 
 		void *signal_server_alive(int sockfd);
 

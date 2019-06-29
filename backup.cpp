@@ -213,12 +213,12 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 			bkp_info.ip = ip;
 			bkp_info.sockfd = backup_sockfd;
 			bkp_info.id = backup_id;
-			backups.push_back(bkp_info);
+			backups_list.push_back(bkp_info);
 			
-			for(int i; i < backups.size(); i++) {
-				cout << "\nbackup ip:" << backups[i].ip;
-				cout << "\nbackup sockfd:" << backups[i].sockfd;
-				cout << "\nbackup id:" << backups[i].id;
+			for(int i; i < backups_list.size(); i++) {
+				cout << "\nbackup ip:" << backups_list[i].ip;
+				cout << "\nbackup sockfd:" << backups_list[i].sockfd;
+				cout << "\nbackup id:" << backups_list[i].id;
 				
 			}
 			backup_id++;
@@ -239,9 +239,9 @@ int Backup::election(struct backup_info this_backup) {
 
 	// se for o menor id, manda a mensagem eleição
 	if(this_backup.id == 0) {
-		for(int i = this_backup.id + 1; i < backups.size(); i++) {
-			com.send_int(backups[i].sockfd, this_backup.id);
-			int id = receive_int(backups[i].sockfd, this_backup.id * 10);
+		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {
+			com.send_int(backups_list[i].sockfd, this_backup.id);
+			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
 			received_ids.push_back(id);
 		}
 
@@ -254,14 +254,14 @@ int Backup::election(struct backup_info this_backup) {
 		}
 	} else { // Se não for o backup de menor id, fica esperando por uma mensagem
 		for(int i = 0; i < this_backup.id; i++) {
-			int id = receive_int(backups[i].sockfd, this_backup.id * 10); 
-			com.send_int(backups[i].sockfd, backups[i].id);
+			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10); 
+			com.send_int(backups_list[i].sockfd, backups_list[i].id);
 			received_ids.push_back(id);
 		}
 
-		for(int i = this_backup.id + 1; i < backups.size(); i++) {
-			com.send_int(backups[i].sockfd, backups[i].id);
-			int id = receive_int(backups[i].sockfd, this_backup.id * 10);
+		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {
+			com.send_int(backups_list[i].sockfd, backups_list[i].id);
+			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
 		}
 
 		for(int i = 0; i < received_ids.size(); i++) {
@@ -429,7 +429,7 @@ int Backup::connect_backup_to_backup(string ip) {
 			bkp_info.ip = ip;
 			bkp_info.sockfd = sockfd;
 			bkp_info.id = backup_id;
-			backups.push_back(bkp_info);
+			backups_list.push_back(bkp_info);
 		}
 	}
 

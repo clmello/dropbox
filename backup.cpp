@@ -42,7 +42,11 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 				std::cout << "!!!!!!!BACKUP IP: " << ip << "\n";
 				backup_ips.push_back(ip);
 				// aqui tenta conectar?
-				//connect_backup_to_backup(ip);
+				int c = connect_backup_to_backup(ip);
+				if(c > 0 ){
+					std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+					std::cout << "!!!!!!!!!!!!!!!!! BACKUP CONNECTED !!!!!!!!!!!!!!!!!!\n";
+				}
     		}
 		} else
 			std::cout << "No backup on list\n";
@@ -180,7 +184,8 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 		int backup_sockfd = -1;
 		backup_sockfd = accept(bkp_accept_sockfd, (struct sockaddr *) &bkp_addr, &bkplen);
 		if(backup_sockfd >= 0) {
-			std::cout << "Conectou!\n";
+			std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+			std::cout << "!!!!!!!!!!!!!!!!!!! CONECTOU !!!!!!!!!!!!!!!!!!!!!!!!\n";
 			// add sockfd to list
 			backup_sockets.push_back(backup_sockfd);
 		}
@@ -295,8 +300,6 @@ int Backup::connect_backup_to_main()
 			fcntl(sockfd, F_SETFL, fl | O_NONBLOCK);
 		}
 	}
-
-	cout << endl << "Backup connected";
 	return sockfd;
 }
 

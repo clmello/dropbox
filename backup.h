@@ -54,7 +54,7 @@ class Backup
         static void *check_server_helper(void *void_args);
         void check_server(int* main_check_sockfd, int *server_died);
 		static void *connect_backups_helper(void *void_args);
-		void connect_backup(int* main_check_sockfd, int *server_died);
+		void connect_backup(int* main_check_sockfd, int *is_main);
         int connect_backup_to_main();
         int connect_backup_to_backup(string ip);
         int connect_chk_server();

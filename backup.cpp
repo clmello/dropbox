@@ -7,6 +7,7 @@
 using namespace std;
 
 vector<backup_info> backups_list;
+pthread_mutex_t backup_mutex;
 
 Backup::Backup(string main_ip, int main_port, int backup_port)
 {
@@ -21,11 +22,12 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 	this->main_port = main_port;
 	this->backup_port = backup_port;
 
-	bool is_main = false;
+	int is_main = false;
 	connected = false;
 	int server_died = false;
-	leader = false; // ṕor enquanto esse backup não é o lider
+	leader = false; // por enquanto esse backup não é o lider
 	backup_id = 0;
+	pthread_mutex_init(&backup_mutex, NULL);
 
 	struct backup_info bkp_info;
 	struct backup_info this_backup;
@@ -74,7 +76,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		struct bkp_args backup_args;
 		backup_args.obj = this;
 		backup_args.main_check_sockfd = &chk_sockfd;
-		backup_args.server_died = &server_died;
+		backup_args.server_died = &is_main;
 		// se 0 -> só abre thread pra esperar por conexões
 		std::cout << "Vai abrir a thread pra esperar conexões\n";
 		pthread_create(&connect_backups_thread, NULL, &connect_backups_helper, &backup_args);
@@ -102,8 +104,10 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		// TODO: eleição
 		// A função election() deve retornar "" para o novo main server e "IP_do_novo_main"
 		//para todos os outros
+		pthread_mutex_lock(&backup_mutex);
 		string new_host = election(this_backup);
 		backups_list.clear();
+		pthread_mutex_unlock(&backup_mutex);
 		/*int leader = election(this_backup);
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!! LEADER: " << leader;
@@ -181,7 +185,7 @@ void *Backup::connect_backups_helper(void* void_args)
     return 0;
 }
 
-void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
+void Backup::connect_backup(int* main_check_sockfd, int *is_main) {
 	// 1. inicializa o socket da conexão com backup
 	// 2. fica esperando por uma conexão de outro backup com id maior (ex: backup de id 0 que o backup de id 1 se conecte)
 	// 3. depois de se conectar, adiciona o socket na lista de sockets
@@ -206,7 +210,8 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 	bkplen = sizeof(struct sockaddr_in);
 
 	std::cout << "Esperando conexão\n";
-	while(!*server_died) {
+	while(!*is_main) {
+		pthread_mutex_lock(&backup_mutex);
 		int backup_sockfd = -1;
 		backup_sockfd = accept(bkp_accept_sockfd, (struct sockaddr *) &bkp_addr, &bkplen);
 		if(backup_sockfd > 0) {
@@ -228,7 +233,9 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 			}
 			backup_id++;
 		}
+		pthread_mutex_unlock(&backup_mutex);
 	}
+	close(bkp_accept_sockfd);
 	std::cout << "Thread funcionando \n";
 }
 

@@ -1,4 +1,4 @@
-#include "Communication_server.h"
+//#include "Communication_server.h"
 #include "Synchronization_server.h"
 #include "backup.h"
 #include <signal.h>
@@ -53,13 +53,13 @@ int main(int argc, char **argv)
 		// Start the server
 		cout << "\n\nmain server\n\n";
 		Synchronization_server server;
-		server.Init(4000);
+		server.Init(6000);
 	}
 	else
 	{
 		// Start the backup
 		cout << "\n\nbackup server\n\n";
-		Backup backup(host, port, port+1);
+		Backup backup(host, port, port+50);
 	}
 
 	return 0;

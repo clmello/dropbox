@@ -19,7 +19,7 @@ struct backup_info {
 	int id;
 };
 
-vector<backup_info> backups_list;
+extern vector<backup_info> backups_list;
 
 
 class Backup

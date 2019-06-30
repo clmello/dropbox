@@ -6,6 +6,8 @@
 
 using namespace std;
 
+vector<backup_info> backups_list;
+
 Backup::Backup(string main_ip, int main_port, int backup_port)
 {
 	this->header_size = 10;
@@ -41,6 +43,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		// recebe numero de backups pra se conectar
 		int num_backups = receive_int(main_sockfd, 30);
 		std::cout << "!!!!!!!!!!!!!!!!!!!!! VAI TESTAR RECEBIMENTO DE IPS\n";
+		cout << endl << "existem " << num_backups << " backups";
 		// se >= 1 -> tenta se conectar com os ips recebidos e depois abre thread pra esperar conexão
 		if(num_backups > 0) {
 			for(int i=0; i < num_backups; i++) {
@@ -58,7 +61,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 			std::cout << "No backup on list\n";
 
 		// o backup guarda seu socket como -1, porque ai tu sabe qual o id dele (o lugar dele na lista)
-		
+
 		//bkp_info.ip = "";
 		//bkp_info.sockfd = -1;
 		//bkp_info.id = backup_id;
@@ -97,13 +100,14 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		cout << endl << endl << "Electing new main server" << endl;
 		// TODO: eleição
 		// A função election() deve retornar "" para o novo main server e "IP_do_novo_main"
-		
+
 		//para todos os outros
 		// string new_host = election();
 		int leader = election(this_backup);
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!! LEADER: " << leader;
 		cout << endl;
+		exit(0);
 		//----------------------------
 		// Essa linha é só p/ testes
 		string new_host = "";
@@ -199,7 +203,7 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 	    printf("ERROR on binding");
 	listen(bkp_accept_sockfd, 5);
 	bkplen = sizeof(struct sockaddr_in);
-	
+
 	std::cout << "Esperando conexão\n";
 	while(!*server_died) {
 		int backup_sockfd = -1;
@@ -214,12 +218,12 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 			bkp_info.sockfd = backup_sockfd;
 			bkp_info.id = backup_id;
 			backups_list.push_back(bkp_info);
-			
+
 			for(int i; i < backups_list.size(); i++) {
 				cout << "\nbackup ip:" << backups_list[i].ip;
 				cout << "\nbackup sockfd:" << backups_list[i].sockfd;
 				cout << "\nbackup id:" << backups_list[i].id;
-				
+
 			}
 			backup_id++;
 		}
@@ -239,6 +243,8 @@ int Backup::election(struct backup_info this_backup) {
 
 	// se for o menor id, manda a mensagem eleição
 	if(this_backup.id == 0) {
+		cout << endl << "this is the first backup\nsending election";
+		cout << endl;
 		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {
 			com.send_int(backups_list[i].sockfd, this_backup.id);
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
@@ -246,6 +252,8 @@ int Backup::election(struct backup_info this_backup) {
 		}
 
 		// os ids que tem -10 é porque deu timeout
+			cout << endl << "receiving answers";
+			cout << endl;
 		for(int i = 0; i < received_ids.size(); i++) {
 			if(received_ids[i] != -10) {
 				leader = false;
@@ -253,17 +261,23 @@ int Backup::election(struct backup_info this_backup) {
 			}
 		}
 	} else { // Se não for o backup de menor id, fica esperando por uma mensagem
+		cout << endl << "NOT the first backup\nreceiving election";
+		cout << endl;
 		for(int i = 0; i < this_backup.id; i++) {
-			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10); 
+			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
 			com.send_int(backups_list[i].sockfd, backups_list[i].id);
 			received_ids.push_back(id);
 		}
 
+			cout << endl << "sending election";
+			cout << endl;
 		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {
 			com.send_int(backups_list[i].sockfd, backups_list[i].id);
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
 		}
 
+			cout << endl << "receiving answers";
+			cout << endl;
 		for(int i = 0; i < received_ids.size(); i++) {
 			leader = true;
 			if(received_ids[i] > this_backup.id) {
@@ -271,11 +285,11 @@ int Backup::election(struct backup_info this_backup) {
 				leader_id = received_ids[i];
 			}
 		}
-		
+
 	}
 
 	return leader_id;
-	
+
 }
 
 void Backup::receive_commands(int sockfd, int *server_died)
@@ -419,7 +433,7 @@ int Backup::connect_backup_to_backup(string ip) {
 			bzero(&(other_backup_addr.sin_zero), 8);
 
 			if (connect(sockfd,(struct sockaddr *) &other_backup_addr,sizeof(other_backup_addr)) < 0)
-				std::cerr << "ERROR connecting with server\n";
+				std::cerr << "ERROR connecting with backup\n";
 			else
 				connected = true;
 			// Make socket non-blocking

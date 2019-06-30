@@ -69,6 +69,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		this_backup.ip = "";
 		this_backup.sockfd = -1;
 		this_backup.id = backup_id;
+		backups_list.push_back(this_backup);
 		backup_id++;
 		struct bkp_args backup_args;
 		backup_args.obj = this;
@@ -522,8 +523,8 @@ int Backup::receive_int(int sockfd, int timeout)
 
 packet* Backup::receive_header(int sockfd, int timeout_sec)
 {
-	cout << endl << "entrei no receive_header";
-	cout << endl;
+	//cout << endl << "entrei no receive_header";
+	//cout << endl;
     buffer = (char*)buffer_address;
     header = (packet*)header_address;
 
@@ -553,7 +554,7 @@ packet* Backup::receive_header(int sockfd, int timeout_sec)
 			timedout = true;
 	}
 	if(timedout){
-		cout << endl << "TIMEOUT NO RECEIVE_HEADER!";
+		//cout << endl << "TIMEOUT NO RECEIVE_HEADER!";
 		header->type = 10;
 		return header;
 	}
@@ -601,7 +602,7 @@ packet* Backup::receive_payload(int sockfd, int timeout_sec)
 	}
 	pkt->_payload = (const char*)buffer;
 	if(timedout){
-		cout << endl << "TIMEOUT NO RECEIVE_HEADER!";
+		//cout << endl << "TIMEOUT NO RECEIVE_HEADER!";
 		header->type = 10;
 	}
 	return pkt;

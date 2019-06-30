@@ -106,6 +106,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		// A função election() deve retornar "" para o novo main server e "IP_do_novo_main"
 		//para todos os outros
 		string new_host = election(this_backup);
+		cout << endl << "new_host: " << new_host;
 		backups_list.clear();
 		/*int leader = election(this_backup);
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
@@ -120,7 +121,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 			is_main = true;
 		else
 		{
-			main_ip = new_host;
+			this->main_ip = new_host;
 			this->main_port = main_port + 3;
 			connected = false;
 			cout << endl << "New main port: " << main_port;
@@ -293,10 +294,15 @@ string Backup::election(struct backup_info this_backup) {
 	cout << endl;
 
 	// Find the IP of the leader, and return it
+	cout << endl << "tentando encontrar o IP do ID " << leader_id;
 	for(int i=0; i<backups_list.size(); i++)
 	{
-		if(backups_list[i].id == leader_id)
+		cout << endl << "testando " << backups_list[i].id << " contra " << leader_id;
+		cout << endl << "ip: " << backups_list[i].ip;
+		if(backups_list[i].id == leader_id){
+			cout << endl << "retornando " << backups_list[i].ip;
 			return backups_list[i].ip;
+		}
 	}
 
 	// If this is the leader, return an empty string
@@ -331,7 +337,6 @@ void Backup::receive_commands(int sockfd, int *server_died)
                 string filename = pkt->_payload;
 				filename.resize(pkt->length);
 
-				// TODO: Receive mtime
                 pkt = receive_payload(sockfd, 30);
 				time_t mtime= *(time_t*)pkt->_payload;
 
@@ -358,7 +363,7 @@ void Backup::receive_commands(int sockfd, int *server_died)
 				filename.resize(pkt->length);
 
 			    const char *homedir = getenv("HOME");
-			    string syncdir = "/bkp_sync_dir_" + username;
+			    string syncdir = "/server_sync_dir_" + username;
 			    string path = string(homedir) + syncdir + "/" + filename;
 				remove(path.c_str());
 
@@ -374,7 +379,7 @@ void Backup::receive_commands(int sockfd, int *server_died)
 string Backup::create_user_folder(string username)
 {
     const char *homedir = getenv("HOME");
-    string syncdir = "/bkp_sync_dir_" + username;
+    string syncdir = "/server_sync_dir_" + username;
     string path = string(homedir) + syncdir;
 
 	DIR* dir = opendir(path.c_str());
@@ -626,7 +631,7 @@ void Backup::receive_file(int sockfd, string path)
 void Backup::receive_server_files(int sockfd)
 {
     const char *homedir = getenv("HOME");
-    string syncdir = "/bkp_sync_dir_";
+    string syncdir = "/server_sync_dir_";
     string base_path = string(homedir) + syncdir;
 
 	// Receive the number of clients
@@ -662,7 +667,7 @@ void Backup::mtime_to_file(string path, time_t mtime, string username)
 {
 	// Set txt path
 	string path_txt = getenv("HOME");
-	path_txt += "/bkp_sync_dir_" + username + "/" + "mtimes";
+	path_txt += "/server_sync_dir_" + username + "/" + "mtimes";
 
 	ifstream ifile;
 	ifile.open(path_txt.c_str());
@@ -729,7 +734,7 @@ void Backup::delete_mtime_from_file(string path, string username)
 	cout << endl;
 	// Set txt path
 	string path_txt = getenv("HOME");
-	path_txt += "/bkp_sync_dir_" + username + "/" + "mtimes";
+	path_txt += "/server_sync_dir_" + username + "/" + "mtimes";
 
 	ifstream ifile;
 	ifile.open(path_txt.c_str());

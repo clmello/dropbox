@@ -102,11 +102,11 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		// A função election() deve retornar "" para o novo main server e "IP_do_novo_main"
 		//para todos os outros
 		string new_host = election(this_backup);
-		//int leader = election(this_backup);
+		/*int leader = election(this_backup);
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!! LEADER: " << leader;
 		cout << endl;
-		//exit(0);
+		exit(0);*/
 		//----------------------------
 		// Essa linha é só p/ testes
 		//string new_host = "";
@@ -284,6 +284,10 @@ string Backup::election(struct backup_info this_backup) {
 		}
 
 	}
+
+	cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
+	cout << "\n!!!!!!!!!!!!!!!!!!!!!! LEADER: " << leader_id;
+	cout << endl;
 
 	// Find the IP of the leader, and return it
 	for(int i=0; i<backups_list.size(); i++)

@@ -59,7 +59,7 @@ class Backup
         int connect_backup_to_backup(string ip);
         int connect_chk_server();
         void close_backup(int main_check_sockfd);
-		int election(struct backup_info this_backup);
+		string election(struct backup_info this_backup);
         void receive_commands(int sockfd, int *server_died);
         string create_user_folder(string username);
         int receive_int(int sockfd, int timeout);

@@ -100,17 +100,16 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		cout << endl << endl << "Electing new main server" << endl;
 		// TODO: eleição
 		// A função election() deve retornar "" para o novo main server e "IP_do_novo_main"
-
 		//para todos os outros
-		// string new_host = election();
-		int leader = election(this_backup);
+		string new_host = election(this_backup);
+		//int leader = election(this_backup);
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!! LEADER: " << leader;
 		cout << endl;
-		exit(0);
+		//exit(0);
 		//----------------------------
 		// Essa linha é só p/ testes
-		string new_host = "";
+		//string new_host = "";
 		//----------------------------
 		if(new_host=="")
 			is_main = true;
@@ -231,7 +230,7 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 	std::cout << "Thread funcionando \n";
 }
 
-int Backup::election(struct backup_info this_backup) {
+string Backup::election(struct backup_info this_backup) {
 	struct packet *pkt;
 	Communication_server com;
 	com.Init(backup_port, 10, 502);
@@ -269,15 +268,13 @@ int Backup::election(struct backup_info this_backup) {
 			received_ids.push_back(id);
 		}
 
-			cout << endl << "sending election";
+			cout << endl << "sending election/receiving answers";
 			cout << endl;
 		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {
 			com.send_int(backups_list[i].sockfd, backups_list[i].id);
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
 		}
 
-			cout << endl << "receiving answers";
-			cout << endl;
 		for(int i = 0; i < received_ids.size(); i++) {
 			leader = true;
 			if(received_ids[i] > this_backup.id) {
@@ -288,7 +285,15 @@ int Backup::election(struct backup_info this_backup) {
 
 	}
 
-	return leader_id;
+	// Find the IP of the leader, and return it
+	for(int i=0; i<backups_list.size(); i++)
+	{
+		if(backups_list[i].id == leader_id)
+			return backups_list[i].ip;
+	}
+
+	// If this is the leader, return an empty string
+	return "";
 
 }
 

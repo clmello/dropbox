@@ -262,6 +262,7 @@ string Backup::election(struct backup_info this_backup) {
 			com.send_int(backups_list[i].sockfd, this_backup.id);
 			cout << endl << "waiting for answer";
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
+			cout << endl << "answer received: " << id;
 		}
 
 		cout << endl << "looking for higher IDs";

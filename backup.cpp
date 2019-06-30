@@ -254,7 +254,7 @@ string Backup::election(struct backup_info this_backup) {
 			received_ids.push_back(id);
 		}
 
-			cout << endl << "sending election/receiving answers to/from " << backups_list.size()-1 << " backups";
+			cout << endl << "sending election/receiving answers to/from " << backups_list.size()-this_backup.id << " backups";
 			cout << endl;
 		// Send election to higher IDs and wait for answer
 		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {

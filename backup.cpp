@@ -341,12 +341,14 @@ void Backup::receive_commands(int sockfd, int *server_died)
 				time_t mtime= *(time_t*)pkt->_payload;
 
 				// Receive file
+				cout << endl << endl << "receiving file";
+				cout << endl;
+
 				//receive_file(sockfd, (path+"/"+filename));
 				Communication_server com;
 				com.Init(main_port, header_size, max_payload);
-				cout << endl << endl << "receiving file";
-				cout << endl;
 				com.receive_file(sockfd, (path+"/"+filename));
+
 				cout << endl << "file received";
 				cout << endl;
 
@@ -427,8 +429,8 @@ int Backup::connect_backup_to_main()
 			else
 				connected = true;
 			// Make socket non-blocking
-			int fl = fcntl(sockfd, F_GETFL, 0);
-			fcntl(sockfd, F_SETFL, fl | O_NONBLOCK);
+			//int fl = fcntl(sockfd, F_GETFL, 0);
+			//fcntl(sockfd, F_SETFL, fl | O_NONBLOCK);
 		}
 	}
 	return sockfd;
@@ -554,6 +556,11 @@ packet* Backup::receive_header(int sockfd, int timeout_sec)
 	}
 	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
 	{
+		cout << endl << endl << "HEADER received!";
+		cout << endl << "type: " << header->type;
+		cout << endl << "seqn: " << header->seqn;
+		cout << endl << "total_size: " << header->total_size;
+		cout << endl << "payload_size: " << header->length << endl;
 	    memcpy(&header->type, &buffer[0], 2);
 	    memcpy(&header->seqn, &buffer[2], 2);
 	    memcpy(&header->total_size, &buffer[4], 4);
@@ -604,6 +611,7 @@ packet* Backup::receive_payload(int sockfd, int timeout_sec)
 
 void Backup::receive_file(int sockfd, string path)
 {
+	cout << endl << "receiving file to path: " << path.c_str();
     FILE *fp = fopen(path.c_str(), "w");
     if(fp==NULL)
         cout << "\nERROR OPENING " << path << endl;
@@ -613,8 +621,14 @@ void Backup::receive_file(int sockfd, string path)
     struct packet *pkt;
     pkt = receive_payload(sockfd, 30);
     uint32_t total_size = pkt->total_size;
+	cout << endl << endl << "packet received!";
+	cout << endl << "type: " << pkt->type;
+	cout << endl << "seqn: " << pkt->seqn;
+	cout << endl << "total_size: " << pkt->total_size;
+	cout << endl << "payload_size: " << pkt->length << endl;
 
     // Write the first payload to the file
+	cout << endl << "writing to " << path;
     ssize_t bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
     if (bytes_written_to_file < pkt->length)
         cout << "\nERROR WRITING TO " << path << endl;
@@ -627,7 +641,13 @@ void Backup::receive_file(int sockfd, string path)
     {
         // Receive payload
         receive_payload(sockfd, 30);
+		cout << endl << endl << "packet received!";
+		cout << endl << "type: " << pkt->type;
+		cout << endl << "seqn: " << pkt->seqn;
+		cout << endl << "total_size: " << pkt->total_size;
+		cout << endl << "payload_size: " << pkt->length << endl;
         // Write it to the file
+		cout << endl << "writing to " << path;
         bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
         if (bytes_written_to_file < pkt->length)
             cout << "\nERROR WRITING TO " << path << endl;
@@ -665,7 +685,10 @@ void Backup::receive_server_files(int sockfd)
 			string path = base_path + username + "/" + filename;
 
 			// Receive file
-			receive_file(sockfd, path);
+			Communication_server com;
+			com.Init(main_port, header_size, max_payload);
+			com.receive_file(sockfd, path);
+			//receive_file(sockfd, path);
 		}
 	}
 }

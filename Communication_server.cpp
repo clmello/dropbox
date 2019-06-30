@@ -28,7 +28,7 @@ void Communication_server::receive_header(int sockfd, struct packet *header)
         int n = read(sockfd, &buffer[bytes_received], header_size-bytes_received);
         cout << "\nN DEPOIS DO READ: " << n;
         if (n < 0)
-            printf("ERROR reading from socket");
+            perror("ERROR reading from socket");
 
         bytes_received+=n;
 		cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
@@ -43,10 +43,10 @@ void Communication_server::receive_header(int sockfd, struct packet *header)
 	    memcpy(&header->seqn, &buffer[2], 2);
 	    memcpy(&header->total_size, &buffer[4], 4);
 	    memcpy(&header->length, &buffer[8], 2);
-	    //cout << "\n" << sockfd << ": type: " << header->type;
-	    //cout << "\n" << sockfd << ": seqn: " << header->seqn;
-	    //cout << "\n" << sockfd << ": total_size: " << header->total_size;
-	    //cout << "\n" << sockfd << ": payload_size: " << header->length << endl;
+	    cout << "\n" << sockfd << ": type: " << header->type;
+	    cout << "\n" << sockfd << ": seqn: " << header->seqn;
+	    cout << "\n" << sockfd << ": total_size: " << header->total_size;
+	    cout << "\n" << sockfd << ": payload_size: " << header->length << endl;
     }
     free(buffer);
 }
@@ -67,7 +67,7 @@ long int Communication_server::receive_payload(int sockfd, struct packet *pkt, i
         // read from the socket
         int n = read(sockfd, &buffer[bytes_received], pkt->length-bytes_received);
         if (n < 0)
-            printf("ERROR reading from socket");
+            perror("ERROR reading from socket");
 
         bytes_received+=n;
 		cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received<<endl;
@@ -369,10 +369,6 @@ void *Communication_server::receive_commands(int sockfd, string username, int *t
 
 				// Unlock the mutex for editing the user_files vector
 				pthread_mutex_unlock(user_files_mutex);
-
-				//TODO: receive files from the client, if they are more recent
-				// Na real não precisa. Só manda os mtimes pro cliente. Ele decide
-				//se quer fazer download/upload de algum arquivo.
 
                 break;
             }

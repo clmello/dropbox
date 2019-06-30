@@ -103,6 +103,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		// A função election() deve retornar "" para o novo main server e "IP_do_novo_main"
 		//para todos os outros
 		string new_host = election(this_backup);
+		backups_list.clear();
 		/*int leader = election(this_backup);
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!! LEADER: " << leader;
@@ -254,7 +255,7 @@ string Backup::election(struct backup_info this_backup) {
 			received_ids.push_back(id);
 		}
 
-			cout << endl << "sending election/receiving answers to/from " << backups_list.size()-this_backup.id << " backups";
+			cout << endl << "sending election/receiving answers to/from " << backups_list.size()-this_backup.id-1 << " backups";
 			cout << endl;
 		// Send election to higher IDs and wait for answer
 		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {

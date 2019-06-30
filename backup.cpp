@@ -241,35 +241,9 @@ string Backup::election(struct backup_info this_backup) {
 	leader = true;
 	leader_id = this_backup.id;
 
-	// se for o menor id, manda a mensagem eleição
-	if(this_backup.id == 0) {
-		cout << endl << "this is the first backup\nsending election";
-		// Send election to all backups with higher ID and wait for the answers
-		cout << endl << backups_list.size() << " backups exist";
-		cout << endl << "my ID is " << this_backup.id;
-		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {
-			com.send_int(backups_list[i].sockfd, this_backup.id);
-			cout << endl << "sent election to " << backups_list[i].id;
-			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
-			cout << endl << "received answer from " << backups_list[i].id;
-			received_ids.push_back(id);
-		}
-
-		// os ids que tem -10 é porque deu timeout
-		// If there is any other active backup, it will be the leader
-		cout << endl << "checking if any higer ID answered";
-		for(int i = 0; i < received_ids.size(); i++) {
-			cout << endl << endl << "i: " << i;
-			cout << endl << "id: " << received_ids[i];
-			//TODO: achar o maior
-			if(received_ids[i] != -10) {
-				leader = false;
-				leader_id = received_ids[i];
-			}
-		}
-	} else { // Se não for o backup de menor id, fica esperando por uma mensagem
-		cout << endl << "NOT the first backup\nreceiving election";
+		cout << endl << "receiving election from " << this_backup.id << " backups";
 		cout << endl;
+		cout << endl << "my ID is " << this_backup.id;
 		// Wait for election from smaller IDs and then send answer
 		for(int i = 0; i < this_backup.id; i++) {
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
@@ -279,7 +253,7 @@ string Backup::election(struct backup_info this_backup) {
 			received_ids.push_back(id);
 		}
 
-			cout << endl << "sending election/receiving answers";
+			cout << endl << "sending election/receiving answers to/from " << backups_list.size() << " backups";
 			cout << endl;
 		// Send election to higher IDs and wait for answer
 		cout << endl << backups_list.size() << " backups exist";
@@ -304,7 +278,6 @@ string Backup::election(struct backup_info this_backup) {
 			}
 		}
 
-	}
 
 	cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
 	cout << "\n!!!!!!!!!!!!!!!!!!!!!! LEADER: " << leader_id;

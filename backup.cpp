@@ -341,7 +341,14 @@ void Backup::receive_commands(int sockfd, int *server_died)
 				time_t mtime= *(time_t*)pkt->_payload;
 
 				// Receive file
-				receive_file(sockfd, (path+"/"+filename));
+				//receive_file(sockfd, (path+"/"+filename));
+				Communication_server com;
+				com.Init(main_port, header_size, max_payload);
+				cout << endl << endl << "receiving file";
+				cout << endl;
+				com.receive_file(sockfd, (path+"/"+filename));
+				cout << endl << "file received";
+				cout << endl;
 
 				mtime_to_file((path+"/"+filename), mtime, username);
 

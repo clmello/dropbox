@@ -18,22 +18,20 @@ void Communication_server::Init(int port, int header_size, int max_payload)
 void Communication_server::receive_header(int sockfd, struct packet *header)
 {
 	char *buffer = (char*)malloc(header_size);
-    //cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_HEADER\n\n";
+    cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_HEADER\n\n";
 	int bytes_received=0;
-	//cout << "\n\nbytes lidos: "<<bytes_received;
+	cout << "\n\nbytes lidos: "<<bytes_received;
     while(bytes_received < header_size)
     {
-        //cout << "\n\nsockfd = " << sockfd << "\n\n";
+        cout << "\n\nsockfd = " << sockfd << "\n\n";
         /* read from the socket */
-        //cout << "\nBYTES_LIDOS ANTES DO READ: " << bytes_received;
         int n = read(sockfd, &buffer[bytes_received], header_size-bytes_received);
-        //cout << "\nBYTES_LIDOS DEPOIS DO READ: " << bytes_received;
-        //cout << "\nN DEPOIS DO READ: " << n;
+        cout << "\nN DEPOIS DO READ: " << n;
         if (n < 0)
             printf("ERROR reading from socket");
 
         bytes_received+=n;
-		//cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
+		cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
 	}
 	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
 	{
@@ -60,8 +58,9 @@ void Communication_server::receive_header(int sockfd, struct packet *header)
 long int Communication_server::receive_payload(int sockfd, struct packet *pkt, int type)
 {
 	char *buffer = (char*)malloc(max_payload);
-    //cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_PAYLOAD\n\n";
+    cout << "\n\n" << sockfd << ": ENTREI NO RECEIVE_PAYLOAD\n\n";
     receive_header(sockfd, pkt);
+	cout << endl << "HEADER RECEBIDO";
 	int bytes_received=0;
     while(bytes_received < pkt->length)
     {
@@ -71,9 +70,9 @@ long int Communication_server::receive_payload(int sockfd, struct packet *pkt, i
             printf("ERROR reading from socket");
 
         bytes_received+=n;
-		//cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received<<endl;
+		cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received<<endl;
 	}
-	//cout << "\n" << sockfd << ": bytes lidos: "<<bytes_received;
+	cout << "\n" << sockfd << ": TOTAL de bytes lidos: "<<bytes_received;
 	pkt->_payload = (const char*)buffer;
 	switch (type)
 	{
@@ -608,7 +607,7 @@ void Communication_server::send_file(int sockfd, string path)
     int total_size = total_size_f;
     if (total_size_f > total_size)
         total_size ++;
-    //cout << "\n\ntotal size: " << total_size;
+    cout << "\n\ntotal size: " << total_size;
 
     int i;
     int total_bytes_sent = 0;
@@ -633,15 +632,15 @@ void Communication_server::send_file(int sockfd, string path)
         else
             pkt.length = max_payload;
 
-        //cout << endl << total_bytes_sent << " bytes have been sent";
-        //cout << endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
+        cout << endl << total_bytes_sent << " bytes have been sent";
+        cout << endl << total_payload_size - (total_bytes_sent - header_size*(i-1)) << " bytes will be sent";
 
         // Read pkt.length bytes from the file
         size_t bytes_read = fread(file_buffer, 1, pkt.length, fp);
         if(bytes_read != pkt.length)
             cout << "\nError reading from file \"" << path << "\"";
 
-        //cout << "\nbytes read: " << bytes_read;
+        cout << "\nbytes read: " << bytes_read;
         //cout << "\nConteudo lido: ";
 	    //printf("%.*s\n", max_payload, file_buffer);
         // Save it to pkt._payload
@@ -663,12 +662,12 @@ void Communication_server::send_file(int sockfd, string path)
 	        bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
-        //cout << "\n\nHEADER!\n";
-        //cout << "bytes sent: " << bytes_sent << endl;
-        //cout << "type: " << pkt.type;
-        //cout << "\nseqn: " << pkt.seqn;
-        //cout << "\ntotal_size: " << pkt.total_size;
-        //cout << "\npayload_size: " << pkt.length << endl;
+        cout << "\n\nHEADER!\n";
+        cout << "bytes sent: " << bytes_sent << endl;
+        cout << "type: " << pkt.type;
+        cout << "\nseqn: " << pkt.seqn;
+        cout << "\ntotal_size: " << pkt.total_size;
+        cout << "\npayload_size: " << pkt.length << endl;
 
         //------------------------------------------------------------------------
         // SEND PAYLOAD
@@ -683,10 +682,10 @@ void Communication_server::send_file(int sockfd, string path)
 	        bytes_sent += n;
         }
         total_bytes_sent += bytes_sent;
-        /*cout << "PACKET!\n";
+        cout << "PACKET!\n";
         cout << "\npayload(char*): ";
         printf("%.*s\n", max_payload, pkt._payload);
-        cout << "bytes sent: " << bytes_sent << endl;*/
+        cout << "bytes sent: " << bytes_sent << endl;
         //------------------------------------------------------------------------
     }
     //free(file_buffer);
@@ -705,13 +704,13 @@ void Communication_server::receive_file(int sockfd, string path)
     struct packet pkt;
     receive_payload(sockfd, &pkt, 0);
     uint32_t total_size = pkt.total_size;
-    //cout << "\n\nTHE SERVER WILL RECEIVE " << total_size << " PACKETS!\n";
+    cout << "\n\nTHE SERVER WILL RECEIVE " << total_size << " PACKETS!\n";
     // Write the first payload to the file
     ssize_t bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
     if (bytes_written_to_file < pkt.length)
         cout << "\nERROR WRITING TO " << path << endl;
 
-    //cout << bytes_written_to_file << " bytes written to file" << endl;
+    cout << bytes_written_to_file << " bytes written to file" << endl;
 
     // Receive all the [total_size] packets
     // It starts at 2 because the first packet has already been received
@@ -724,7 +723,7 @@ void Communication_server::receive_file(int sockfd, string path)
         bytes_written_to_file = fwrite(pkt._payload, sizeof(char), pkt.length, fp);
         if (bytes_written_to_file < pkt.length)
             cout << "\nERROR WRITING TO " << path << endl;
-        //cout << "\n" << bytes_written_to_file << " bytes written to file\n";
+        cout << "\n" << bytes_written_to_file << " bytes written to file\n";
     }
     fclose(fp);
 }

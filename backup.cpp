@@ -249,7 +249,7 @@ string Backup::election(struct backup_info this_backup) {
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
 			cout << endl << "received election from " << id;
 			cout << endl << "received election from " << backups_list[i].id;
-			com.send_int(backups_list[i].sockfd, backups_list[i].id);
+			com.send_int(backups_list[i].sockfd, this_backup.id);
 			cout << endl << "sending answer";
 			received_ids.push_back(id);
 		}

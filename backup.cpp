@@ -243,17 +243,21 @@ string Backup::election(struct backup_info this_backup) {
 	// se for o menor id, manda a mensagem eleição
 	if(this_backup.id == 0) {
 		cout << endl << "this is the first backup\nsending election";
-		cout << endl;
+		// Send election to all backups with higher ID and wait for the answers
 		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {
 			com.send_int(backups_list[i].sockfd, this_backup.id);
+			cout << endl << "sent election to " << backups_list[i].id;
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
+			cout << endl << "received answer from " << backups_list[i].id;
 			received_ids.push_back(id);
 		}
 
 		// os ids que tem -10 é porque deu timeout
-			cout << endl << "receiving answers";
-			cout << endl;
+		// If there is any other active backup, it will be the leader
+		cout << endl << "checking if any higer ID answered";
 		for(int i = 0; i < received_ids.size(); i++) {
+			cout << endl << endl << "i: " << i;
+			cout << endl << "id: " << received_ids[i];
 			if(received_ids[i] != -10) {
 				leader = false;
 				leader_id = received_ids[i];
@@ -262,6 +266,7 @@ string Backup::election(struct backup_info this_backup) {
 	} else { // Se não for o backup de menor id, fica esperando por uma mensagem
 		cout << endl << "NOT the first backup\nreceiving election";
 		cout << endl;
+		// Wait for election from smaller IDs and then send answer
 		for(int i = 0; i < this_backup.id; i++) {
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
 			com.send_int(backups_list[i].sockfd, backups_list[i].id);
@@ -270,14 +275,20 @@ string Backup::election(struct backup_info this_backup) {
 
 			cout << endl << "sending election/receiving answers";
 			cout << endl;
+		// Send election to higher IDs and wait for answer
 		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {
 			com.send_int(backups_list[i].sockfd, backups_list[i].id);
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
 		}
 
+		cout << endl << "looking for higher IDs";
+		// If any higher ID answered, then the highest one is the new main
+		leader_id = this_backup.id;
 		for(int i = 0; i < received_ids.size(); i++) {
 			leader = true;
-			if(received_ids[i] > this_backup.id) {
+			cout << endl << endl << "checking ID: " << received_ids[i];
+			cout << endl << "against my ID: " << this_backup.id;
+			if(received_ids[i] > leader_id) {
 				leader = false;
 				leader_id = received_ids[i];
 			}

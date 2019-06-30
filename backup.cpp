@@ -41,6 +41,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 			if(!connected)
 				sleep(3);
 		}
+		server_died = false;
 
 		// recebe numero de backups pra se conectar
 		int num_backups = receive_int(main_sockfd, 30);

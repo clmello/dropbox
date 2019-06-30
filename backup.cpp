@@ -7,7 +7,7 @@
 using namespace std;
 
 vector<backup_info> backups_list;
-pthread_mutex_t backup_mutex;
+int accepting_connections;
 
 Backup::Backup(string main_ip, int main_port, int backup_port)
 {
@@ -22,12 +22,12 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 	this->main_port = main_port;
 	this->backup_port = backup_port;
 
-	int is_main = false;
+	bool is_main = false;
 	connected = false;
 	int server_died = false;
-	leader = false; // por enquanto esse backup não é o lider
+	leader = false; // ṕor enquanto esse backup não é o lider
 	backup_id = 0;
-	pthread_mutex_init(&backup_mutex, NULL);
+	accepting_connections = false;
 
 	struct backup_info bkp_info;
 	struct backup_info this_backup;
@@ -76,7 +76,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		struct bkp_args backup_args;
 		backup_args.obj = this;
 		backup_args.main_check_sockfd = &chk_sockfd;
-		backup_args.server_died = &is_main;
+		backup_args.server_died = &server_died;
 		// se 0 -> só abre thread pra esperar por conexões
 		std::cout << "Vai abrir a thread pra esperar conexões\n";
 		pthread_create(&connect_backups_thread, NULL, &connect_backups_helper, &backup_args);
@@ -104,10 +104,8 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		// TODO: eleição
 		// A função election() deve retornar "" para o novo main server e "IP_do_novo_main"
 		//para todos os outros
-		pthread_mutex_lock(&backup_mutex);
 		string new_host = election(this_backup);
 		backups_list.clear();
-		pthread_mutex_unlock(&backup_mutex);
 		/*int leader = election(this_backup);
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
 		cout << "\n!!!!!!!!!!!!!!!!!!!!!! LEADER: " << leader;
@@ -185,7 +183,7 @@ void *Backup::connect_backups_helper(void* void_args)
     return 0;
 }
 
-void Backup::connect_backup(int* main_check_sockfd, int *is_main) {
+void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 	// 1. inicializa o socket da conexão com backup
 	// 2. fica esperando por uma conexão de outro backup com id maior (ex: backup de id 0 que o backup de id 1 se conecte)
 	// 3. depois de se conectar, adiciona o socket na lista de sockets
@@ -194,24 +192,27 @@ void Backup::connect_backup(int* main_check_sockfd, int *is_main) {
 	socklen_t bkplen;
 
 	// INITIALIZE BACKUP CONNECTION SOCKET
-	// Open the socket as non-blocking
-	if ((bkp_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
-	    printf("ERROR opening socket");
-	cout << "\nBackup socket open (port " << backup_port << ")";
+	if(!accepting_connections)
+	{
+		accepting_connections = true;
+		// Open the socket as non-blocking
+		if ((bkp_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
+		    printf("ERROR opening socket");
+		cout << "\nBackup socket open (port " << backup_port << ")";
 
-	bkp_addr_bkp.sin_family = AF_INET;
-	bkp_addr_bkp.sin_port = htons(backup_port);
-	bkp_addr_bkp.sin_addr.s_addr = INADDR_ANY;
-	bzero(&(bkp_addr_bkp.sin_zero), 8);
+		bkp_addr_bkp.sin_family = AF_INET;
+		bkp_addr_bkp.sin_port = htons(backup_port);
+		bkp_addr_bkp.sin_addr.s_addr = INADDR_ANY;
+		bzero(&(bkp_addr_bkp.sin_zero), 8);
 
-	if (bind(bkp_accept_sockfd, (struct sockaddr *) &bkp_addr_bkp, sizeof(bkp_addr_bkp)) < 0)
-	    printf("ERROR on binding");
-	listen(bkp_accept_sockfd, 5);
-	bkplen = sizeof(struct sockaddr_in);
+		if (bind(bkp_accept_sockfd, (struct sockaddr *) &bkp_addr_bkp, sizeof(bkp_addr_bkp)) < 0)
+		    printf("ERROR on binding");
+		listen(bkp_accept_sockfd, 5);
+		bkplen = sizeof(struct sockaddr_in);
+	}
 
 	std::cout << "Esperando conexão\n";
-	while(!*is_main) {
-		pthread_mutex_lock(&backup_mutex);
+	while(!*server_died) {
 		int backup_sockfd = -1;
 		backup_sockfd = accept(bkp_accept_sockfd, (struct sockaddr *) &bkp_addr, &bkplen);
 		if(backup_sockfd > 0) {
@@ -233,9 +234,7 @@ void Backup::connect_backup(int* main_check_sockfd, int *is_main) {
 			}
 			backup_id++;
 		}
-		pthread_mutex_unlock(&backup_mutex);
 	}
-	close(bkp_accept_sockfd);
 	std::cout << "Thread funcionando \n";
 }
 

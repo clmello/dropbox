@@ -153,13 +153,13 @@ void Backup::check_server(int* main_check_sockfd, int *server_died)
 		{
 			string str_buff = pkt->_payload;
 			string msg = str_buff.substr(0, pkt->length);
-			cout << endl << "msg: " << msg;
-			cout << endl;
+			/*cout << endl << "msg: " << msg;
+			cout << endl;*/
 			// If server closing
 			if(msg=="kill")
 				close_backup(*main_check_sockfd);
-			else if(msg=="alive")
-				cout << endl << "IT'S ALIIIIIIVE!!!!!!" << endl;
+			/*else if(msg=="alive")
+				cout << endl << "IT'S ALIIIIIIVE!!!!!!" << endl;*/
 		}
 	}
 	cout << endl << "saiu do while do check_server" << endl;
@@ -244,6 +244,8 @@ string Backup::election(struct backup_info this_backup) {
 	if(this_backup.id == 0) {
 		cout << endl << "this is the first backup\nsending election";
 		// Send election to all backups with higher ID and wait for the answers
+		cout << endl << backups_list.size() << " backups exist";
+		cout << endl << "my ID is " << this_backup.id;
 		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {
 			com.send_int(backups_list[i].sockfd, this_backup.id);
 			cout << endl << "sent election to " << backups_list[i].id;
@@ -258,6 +260,7 @@ string Backup::election(struct backup_info this_backup) {
 		for(int i = 0; i < received_ids.size(); i++) {
 			cout << endl << endl << "i: " << i;
 			cout << endl << "id: " << received_ids[i];
+			//TODO: achar o maior
 			if(received_ids[i] != -10) {
 				leader = false;
 				leader_id = received_ids[i];
@@ -269,15 +272,21 @@ string Backup::election(struct backup_info this_backup) {
 		// Wait for election from smaller IDs and then send answer
 		for(int i = 0; i < this_backup.id; i++) {
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
+			cout << endl << "received election from " << id;
 			com.send_int(backups_list[i].sockfd, backups_list[i].id);
+			cout << endl << "sending answer";
 			received_ids.push_back(id);
 		}
 
 			cout << endl << "sending election/receiving answers";
 			cout << endl;
 		// Send election to higher IDs and wait for answer
+		cout << endl << backups_list.size() << " backups exist";
+		cout << endl << "my ID is " << this_backup.id;
 		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {
+			cout << endl << "sending election to " << backups_list[i].id;
 			com.send_int(backups_list[i].sockfd, backups_list[i].id);
+			cout << endl << "waiting for answer";
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
 		}
 

@@ -26,7 +26,6 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 	connected = false;
 	int server_died = false;
 	leader = false; // ṕor enquanto esse backup não é o lider
-	backup_id = 0;
 	accepting_connections = false;
 
 	struct backup_info bkp_info;
@@ -34,6 +33,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 
 	while(!is_main)
 	{
+		backup_id = 0;
 		cout << "\n\nhost: " << this->main_ip << "\nport: " << this->main_port << "\n\n";
 		while(!connected){
 			main_sockfd = connect_backup_to_main();
@@ -131,7 +131,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 	// If the code gets here, this backup has been elected the new main server
 	Synchronization_server sync_server;
 	// If the ports were 4000, 4001 and 4002, they become 4003, 4004 and 4005
-	sync_server.Init(main_port+2);
+	sync_server.Init(this->main_port+2);
 
 	exit(0);
 }

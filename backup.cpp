@@ -58,8 +58,8 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 				}*/
 				backup_id++;
     		}
-		} else
-			std::cout << "No backup on list\n";
+		} //else
+			//std::cout << "No backup on list\n";
 
 		// o backup guarda seu socket como -1, porque ai tu sabe qual o id dele (o lugar dele na lista)
 
@@ -270,19 +270,12 @@ string Backup::election(struct backup_info this_backup) {
 			}
 		}
 
-
-	cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
-	cout << "\n!!!!!!!!!!!!!!!!!!!!!! LEADER: " << leader_id;
-	cout << endl;
-
 	// Find the IP of the leader, and return it
-	cout << endl << "tentando encontrar o IP do ID " << leader_id;
+	//cout << endl << "tentando encontrar o IP do ID " << leader_id;
 	for(int i=0; i<backups_list.size(); i++)
 	{
-		cout << endl << "testando " << backups_list[i].id << " contra " << leader_id;
-		cout << endl << "ip: " << backups_list[i].ip;
 		if(backups_list[i].id == leader_id){
-			cout << endl << "retornando " << backups_list[i].ip;
+			//cout << endl << "retornando " << backups_list[i].ip;
 			return backups_list[i].ip;
 		}
 	}
@@ -354,7 +347,7 @@ void Backup::receive_commands(int sockfd, int *server_died)
 				filename.resize(pkt->length);
 
 			    const char *homedir = getenv("HOME");
-			    string syncdir = "/server_sync_dir_" + username;
+			    string syncdir = "/bkp_sync_dir_" + username;
 			    string path = string(homedir) + syncdir + "/" + filename;
 				remove(path.c_str());
 
@@ -370,7 +363,7 @@ void Backup::receive_commands(int sockfd, int *server_died)
 string Backup::create_user_folder(string username)
 {
     const char *homedir = getenv("HOME");
-    string syncdir = "/server_sync_dir_" + username;
+    string syncdir = "/bkp_sync_dir_" + username;
     string path = string(homedir) + syncdir;
 
 	DIR* dir = opendir(path.c_str());
@@ -408,8 +401,10 @@ int Backup::connect_backup_to_main()
 
 			if (connect(sockfd,(struct sockaddr *) &main_addr,sizeof(main_addr)) < 0)
 				std::cerr << "ERROR connecting with server\n";
-			else
+			else{
 				connected = true;
+				cout << endl << "Connected to main";
+			}
 			// Make socket non-blocking
 			//int fl = fcntl(sockfd, F_GETFL, 0);
 			//fcntl(sockfd, F_SETFL, fl | O_NONBLOCK);
@@ -455,7 +450,7 @@ int Backup::connect_backup_to_backup(string ip) {
 		}
 	}
 
-	cout << endl << "Backup connected";
+	//cout << endl << "Backup connected";
 
 	return sockfd;
 }
@@ -640,12 +635,12 @@ void Backup::receive_file(int sockfd, string path)
 void Backup::receive_server_files(int sockfd)
 {
     const char *homedir = getenv("HOME");
-    string syncdir = "/server_sync_dir_";
+    string syncdir = "/bkp_sync_dir_";
     string base_path = string(homedir) + syncdir;
 
 	// Receive the number of clients
 	int num_clients = receive_int(sockfd, 30);
-	cout << endl << "The server has " << num_clients << " clients";
+	//cout << endl << "The server has " << num_clients << " clients";
 	for(int i=0; i<num_clients; i++)
 	{
 		// Receive the username
@@ -679,7 +674,7 @@ void Backup::mtime_to_file(string path, time_t mtime, string username)
 {
 	// Set txt path
 	string path_txt = getenv("HOME");
-	path_txt += "/server_sync_dir_" + username + "/" + "mtimes";
+	path_txt += "/bkp_sync_dir_" + username + "/" + "mtimes";
 
 	ifstream ifile;
 	ifile.open(path_txt.c_str());
@@ -746,7 +741,7 @@ void Backup::delete_mtime_from_file(string path, string username)
 	cout << endl;
 	// Set txt path
 	string path_txt = getenv("HOME");
-	path_txt += "/server_sync_dir_" + username + "/" + "mtimes";
+	path_txt += "/bkp_sync_dir_" + username + "/" + "mtimes";
 
 	ifstream ifile;
 	ifile.open(path_txt.c_str());

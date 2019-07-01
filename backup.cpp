@@ -346,7 +346,7 @@ void Backup::receive_commands(int sockfd, int *server_died)
 				filename.resize(pkt->length);
 
 			    const char *homedir = getenv("HOME");
-			    string syncdir = "/bkp_sync_dir_" + username;
+			    string syncdir = "/server_sync_dir_" + username;
 			    string path = string(homedir) + syncdir + "/" + filename;
 				remove(path.c_str());
 
@@ -361,7 +361,7 @@ void Backup::receive_commands(int sockfd, int *server_died)
 string Backup::create_user_folder(string username)
 {
     const char *homedir = getenv("HOME");
-    string syncdir = "/bkp_sync_dir_" + username;
+    string syncdir = "/server_sync_dir_" + username;
     string path = string(homedir) + syncdir;
 
 	DIR* dir = opendir(path.c_str());
@@ -633,7 +633,7 @@ void Backup::receive_file(int sockfd, string path)
 void Backup::receive_server_files(int sockfd)
 {
     const char *homedir = getenv("HOME");
-    string syncdir = "/bkp_sync_dir_";
+    string syncdir = "/server_sync_dir_";
     string base_path = string(homedir) + syncdir;
 
 	// Receive the number of clients
@@ -672,7 +672,7 @@ void Backup::mtime_to_file(string path, time_t mtime, string username)
 {
 	// Set txt path
 	string path_txt = getenv("HOME");
-	path_txt += "/bkp_sync_dir_" + username + "/" + "mtimes";
+	path_txt += "/server_sync_dir_" + username + "/" + "mtimes";
 
 	ifstream ifile;
 	ifile.open(path_txt.c_str());
@@ -739,7 +739,7 @@ void Backup::delete_mtime_from_file(string path, string username)
 	cout << endl;
 	// Set txt path
 	string path_txt = getenv("HOME");
-	path_txt += "/bkp_sync_dir_" + username + "/" + "mtimes";
+	path_txt += "/server_sync_dir_" + username + "/" + "mtimes";
 
 	ifstream ifile;
 	ifile.open(path_txt.c_str());

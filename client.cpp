@@ -265,7 +265,7 @@ std::string Client::createSyncDir() {
 	const char* folder = dir.c_str();
     struct stat info;
     if (stat(folder, &info) == 0 && S_ISDIR(info.st_mode)){
-        std::cout << "Found folder." << std::endl;
+        ;//std::cout << "Found folder." << std::endl;
     } else {
 		// Read + Write + Execute:  S_IRWXU(user), S_IRWXG(group), S_IRWXO(others)
         mkdir(folder, S_IRWXU | S_IRWXG | S_IRWXO);
@@ -405,8 +405,6 @@ int main(int argc, char **argv) {
     {
         if(backup_ips.size()==0)
         {
-            std::cout << "\nOpcao1";
-
             pthread_mutex_init(&socket_mtx, NULL);
             pthread_mutex_init(&watched_files_copy_mtx, NULL);
 
@@ -423,7 +421,6 @@ int main(int argc, char **argv) {
         // If connecting to a backup
         else
         {
-            std::cout << "\nOpcao2";
             port = port+3;
             server_alive = true;
             // Keep trying until connects to one of the backups
@@ -457,9 +454,7 @@ int main(int argc, char **argv) {
 
         client.userInterface();
 
-        std::cout << std::endl << "VAI DAR JOIN NA THREAD";
         pthread_join(*client.getCheckFilesThread(), NULL);
-        std::cout << std::endl << "DEU JOIN NA THREAD";
         //port += 3;
     }
 }

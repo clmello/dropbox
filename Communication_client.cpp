@@ -47,7 +47,7 @@ bool Communication_client::connect_client_server(Client client) {
 	bzero(&(serv_addr.sin_zero), 8);
 
 	if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-		std::cerr << "ERROR connecting with server\n";
+		std::cerr << "\nERROR connecting with server\n";
 		return connected;
 	}
 
@@ -328,7 +328,7 @@ long int Communication_client::receive_payload(struct packet *pkt, int type, int
 	}
 	pkt->_payload = (const char*)buffer;
 	if(timedout){
-		std::cout << std::endl << "TIMEOUT NO RECEIVE_PAYLOAD!";
+		//std::cout << std::endl << "TIMEOUT NO RECEIVE_PAYLOAD!";
 		pkt->type = 10;
 	}
 	switch (type)
@@ -372,7 +372,7 @@ void Communication_client::receive_header(struct packet *_header, int timeout_se
         	bytes_received+=n;
 	}
 	if(timedout){
-		std::cout << std::endl << "TIMEOUT NO RECEIVE_HEADER!";
+		//std::cout << std::endl << "TIMEOUT NO RECEIVE_HEADER!";
 		_header->type = 10;
 	}
 	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
@@ -445,7 +445,7 @@ std::vector<std::string> Communication_client::receive_backups_ip_socket() {
 	backup_ips.clear();
 	// Receive backups IPs and sockets
     int num_backups = receive_int(10);
-    std::cout << "\nSIZE_BACKUPS: " << num_backups << "\n";
+    //std::cout << "\nSIZE_BACKUPS: " << num_backups << "\n";
 
     for(int i=0; i < num_backups; i++) {
         // First receive IP
@@ -483,6 +483,7 @@ bool Communication_client::check_server_command(int command){
 
 	if(int_received == -10){
 		std::cout << std::endl << "SERVER DEAD!";
+		std::cout << std::endl;
 		server_alive = false;
 	}
 	//else if(int_received > 0)

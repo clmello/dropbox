@@ -442,6 +442,7 @@ int Communication_client::delete_file(std::string path) {
 }
 
 std::vector<std::string> Communication_client::receive_backups_ip_socket() {
+	backup_ips.clear();
 	// Receive backups IPs and sockets
     int num_backups = receive_int(10);
     std::cout << "\nSIZE_BACKUPS: " << num_backups << "\n";
@@ -451,6 +452,7 @@ std::vector<std::string> Communication_client::receive_backups_ip_socket() {
 		packet pkt;
         receive_payload(&pkt, 0, 0);
 		std::string ip = pkt._payload;
+        ip.resize(pkt.length);
 		std::cout << "BACKUP IP: " << ip << "\n";
 
 		backup_ips.push_back(ip);
@@ -483,8 +485,8 @@ bool Communication_client::check_server_command(int command){
 		std::cout << std::endl << "SERVER DEAD!";
 		server_alive = false;
 	}
-	else if(int_received > 0)
-		std::cout << std::endl << "SERVER ALIVE!";
+	//else if(int_received > 0)
+	//	std::cout << std::endl << "SERVER ALIVE!";
     else if(int_received < 0){
         std::cout << "\nServer closed\n";
         exit(0);

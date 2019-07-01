@@ -177,7 +177,7 @@ void Synchronization_server::accept_connections()
 			com.Init(backup_port, header_size, max_payload);
 			// send size of backup_ips list
 			com.send_int(backup_sockfd, backup_ips.size());
-			// if has ips on the list, send to backup			
+			// if has ips on the list, send to backup
 			if(backup_ips.size() > 0) {
 				for(int i=0; i < backup_ips.size(); i++)
 					com.send_string(backup_sockfd, backup_ips[i]);
@@ -185,9 +185,9 @@ void Synchronization_server::accept_connections()
 				std::cout << "No backup on list\n";
 
 			std::string s = inet_ntoa(bkp_addr.sin_addr);
-			std::cout << "\nIP BACKUP: " << s;
+			//std::cout << "\nIP BACKUP: " << s;
 			backup_ips.push_back(s);
-			std::cout << "\nSOCKET BACKUP: " << backup_sockfd;
+			//std::cout << "\nSOCKET BACKUP: " << backup_sockfd;
 			backup_sockets.push_back(backup_sockfd);
 
 			// Send all server files to the backup
@@ -385,11 +385,11 @@ int Synchronization_server::get_num_files(string username)
 			break;
 		}
 	}
-	cout << endl << "User: " << username;
-	cout << endl << "Existem " << user_files->size() << " arquivos";
+	//cout << endl << "User: " << username;
+	//cout << endl << "Existem " << user_files->size() << " arquivos";
 	for(int i=0; i<user_files->size(); i++)
 	{
-		cout << endl << "The file " << (*user_files)[i].get_filename() << " has mtime == " << (*user_files)[i].get_mtime();
+		//cout << endl << "The file " << (*user_files)[i].get_filename() << " has mtime == " << (*user_files)[i].get_mtime();
 		if((*user_files)[i].get_mtime()!=-1)
 			num_files++;
 	}
@@ -407,7 +407,7 @@ void Synchronization_server::send_all_files(int sockfd)
 	com.Init(backup_port, header_size, max_payload);
 	// Send the number of connected USERS
 	com.send_int(sockfd, get_num_users());
-	cout << endl << "I HAVE " << get_num_users() << " USERS";
+	//cout << endl << "I HAVE " << get_num_users() << " USERS";
 	for(int i=0; i<connected_clients.size(); i++)
 	{
 		// Only send the files if the username has not been visited
@@ -419,7 +419,7 @@ void Synchronization_server::send_all_files(int sockfd)
 			com.send_string(sockfd, username);
 			// Send the number of files
 			com.send_int(sockfd, get_num_files(username));
-			cout << endl << username << " HAS " << connected_clients[i].get_user_files_size() << " FILES";
+			//cout << endl << username << " HAS " << connected_clients[i].get_user_files_size() << " FILES";
 			if(connected_clients[i].get_user_files_size()>0)
 			{
 				for(int j=0; j<connected_clients[i].get_user_files()->size(); j++)

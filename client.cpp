@@ -198,25 +198,25 @@ void *Client::check_files_loop() {
     signal(SIGPIPE, SIG_IGN);
     // enquanto a thread está aberta
     while(running && server_alive) {
-        std::cout << "\n\nchecando server...";
+        //std::cout << "\n\nchecando server...";
         server_alive = communication.check_server_command(10);
-        std::cout << std::endl << "server_alive: " << server_alive;
+        //std::cout << std::endl << "server_alive: " << server_alive;
 
         if(!server_alive)
             break;
             //exit(0);
 
-        std::cout << "\nchecando arquivos!";
+        //std::cout << "\nchecando arquivos!";
         check_files();
 
-        std::cout << "\nget_sync_dir!";
+        //std::cout << "\nget_sync_dir!";
         communication.get_sync_dir(6, &watched_files, this->dir);
 
         pthread_mutex_lock(&watched_files_copy_mtx);
         watched_files_copy = watched_files;
         pthread_mutex_unlock(&watched_files_copy_mtx);
 
-        std::cout << "\nzZZ!";
+        //std::cout << "\nzZZ!";
         sleep(10);
     }
     communication.close_socket();

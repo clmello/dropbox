@@ -34,7 +34,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 	while(!is_main)
 	{
 		backup_id = 0;
-		cout << "\n\nhost: " << this->main_ip << "\nport: " << this->main_port << "\n\n";
+		//cout << "\n\nhost: " << this->main_ip << "\nport: " << this->main_port << "\n\n";
 		while(!connected){
 			main_sockfd = connect_backup_to_main();
 			// If could not connect, sleep for 3 seconds so the requests won't flood the network
@@ -45,19 +45,17 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 
 		// recebe numero de backups pra se conectar
 		int num_backups = receive_int(main_sockfd, 30);
-		std::cout << "!!!!!!!!!!!!!!!!!!!!! VAI TESTAR RECEBIMENTO DE IPS\n";
-		cout << endl << "existem " << num_backups << " backups";
+		//cout << endl << "existem " << num_backups << " backups";
 		// se >= 1 -> tenta se conectar com os ips recebidos e depois abre thread pra esperar conexão
 		if(num_backups > 0) {
 			for(int i=0; i < num_backups; i++) {
 				struct packet *pkt = receive_payload(main_sockfd, 10);
 				std::string ip = pkt->_payload;
-				std::cout << "!!!!!!!BACKUP IP: " << ip << "\n";
 				int c = connect_backup_to_backup(ip);
-				if(c > 0 ){
+				/*if(c > 0 ){
 					std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
 					std::cout << "!!!!!!!!!!!!!!!!! BACKUP CONNECTED !!!!!!!!!!!!!!!!!!\n";
-				}
+				}*/
 				backup_id++;
     		}
 		} else
@@ -79,9 +77,7 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		backup_args.main_check_sockfd = &chk_sockfd;
 		backup_args.server_died = &server_died;
 		// se 0 -> só abre thread pra esperar por conexões
-		std::cout << "Vai abrir a thread pra esperar conexões\n";
 		pthread_create(&connect_backups_thread, NULL, &connect_backups_helper, &backup_args);
-		std::cout << "A thread funcionou\n";
 
 		receive_server_files(main_sockfd);
 		chk_sockfd = connect_chk_server();
@@ -101,22 +97,11 @@ Backup::Backup(string main_ip, int main_port, int backup_port)
 		close(main_sockfd);
 		close(chk_sockfd);
 
-		cout << endl << endl << "Electing new main server" << endl;
-		// TODO: eleição
-		// A função election() deve retornar "" para o novo main server e "IP_do_novo_main"
-		//para todos os outros
+		cout << endl << endl << "Electing new main server";
+		// Eleição
 		string new_host = election(this_backup);
 		cout << endl << "new_host: " << new_host;
 		backups_list.clear();
-		/*int leader = election(this_backup);
-		cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
-		cout << "\n!!!!!!!!!!!!!!!!!!!!!! LEADER: " << leader;
-		cout << endl;
-		exit(0);*/
-		//----------------------------
-		// Essa linha é só p/ testes
-		//string new_host = "";
-		//----------------------------
 		if(new_host=="")
 			is_main = true;
 		else
@@ -151,21 +136,18 @@ void Backup::check_server(int* main_check_sockfd, int *server_died)
 		struct packet *pkt = receive_payload(*main_check_sockfd, 10);
 		// Check if timed out
 		if(pkt->type == 10){
-			cout << endl << "SERVER DIED!!";
-			cout << endl;
+			//cout << endl << "SERVER DIED!!";
 			*server_died = true;
 		}
 		else
 		{
 			string str_buff = pkt->_payload;
 			string msg = str_buff.substr(0, pkt->length);
-			/*cout << endl << "msg: " << msg;
-			cout << endl;*/
 			// If server closing
 			if(msg=="kill")
 				close_backup(*main_check_sockfd);
 			/*else if(msg=="alive")
-				cout << endl << "IT'S ALIIIIIIVE!!!!!!" << endl;*/
+				cout << endl << "Server vivo" << endl;*/
 		}
 	}
 	cout << endl << "saiu do while do check_server" << endl;
@@ -200,7 +182,7 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 		// Open the socket as non-blocking
 		if ((bkp_accept_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1)
 		    printf("ERROR opening socket");
-		cout << "\nBackup socket open (port " << backup_port << ")";
+		//cout << "\nBackup socket open (port " << backup_port << ")";
 
 		bkp_addr_bkp.sin_family = AF_INET;
 		bkp_addr_bkp.sin_port = htons(backup_port);
@@ -213,31 +195,31 @@ void Backup::connect_backup(int* main_check_sockfd, int *server_died) {
 		bkplen = sizeof(struct sockaddr_in);
 	}
 
-	std::cout << "Esperando conexão\n";
+	//std::cout << "Esperando conexão\n";
 	while(!*server_died) {
 		int backup_sockfd = -1;
 		backup_sockfd = accept(bkp_accept_sockfd, (struct sockaddr *) &bkp_addr, &bkplen);
 		if(backup_sockfd > 0) {
-			std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
-			std::cout << "!!!!!!!!!!!!!!!!!!! CONECTOU !!!!!!!!!!!!!!!!!!!!!!!!\n";
-			// add sockfd to list
+		//	std::cout << "!!!!!!!!!!!!!!!!!!! CONECTOU !!!!!!!!!!!!!!!!!!!!!!!!\n";
 
+			// add sockfd to list
 			std::string ip = inet_ntoa(bkp_addr.sin_addr);
 			bkp_info.ip = ip;
 			bkp_info.sockfd = backup_sockfd;
 			bkp_info.id = backup_id;
 			backups_list.push_back(bkp_info);
 
-			for(int i; i < backups_list.size(); i++) {
+			/*for(int i; i < backups_list.size(); i++) {
 				cout << "\nbackup ip:" << backups_list[i].ip;
 				cout << "\nbackup sockfd:" << backups_list[i].sockfd;
 				cout << "\nbackup id:" << backups_list[i].id;
 
-			}
+			}*/
+
 			backup_id++;
 		}
 	}
-	std::cout << "Thread funcionando \n";
+	//std::cout << "Thread funcionando \n";
 }
 
 string Backup::election(struct backup_info this_backup) {
@@ -250,38 +232,38 @@ string Backup::election(struct backup_info this_backup) {
 	leader = true;
 	leader_id = this_backup.id;
 
-		cout << endl << "receiving election from " << this_backup.id << " backups";
-		cout << endl;
-		cout << endl << "my ID is " << this_backup.id;
+		//cout << endl << "receiving election from " << this_backup.id << " backups";
+		//cout << endl;
+		//cout << endl << "my ID is " << this_backup.id;
 		// Wait for election from smaller IDs and then send answer
 		for(int i = 0; i < this_backup.id; i++) {
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
-			cout << endl << "received election from " << id;
-			cout << endl << "received election from " << backups_list[i].id;
+			//cout << endl << "received election from " << id;
+			//cout << endl << "received election from " << backups_list[i].id;
 			com.send_int(backups_list[i].sockfd, this_backup.id);
-			cout << endl << "sending answer";
+			//cout << endl << "sending answer";
 			received_ids.push_back(id);
 		}
 
-			cout << endl << "sending election/receiving answers to/from " << backups_list.size()-this_backup.id-1 << " backups";
-			cout << endl;
+			//cout << endl << "sending election/receiving answers to/from " << backups_list.size()-this_backup.id-1 << " backups";
+			//cout << endl;
 		// Send election to higher IDs and wait for answer
 		for(int i = this_backup.id + 1; i < backups_list.size(); i++) {
-			cout << endl << "sending election to " << backups_list[i].id;
+			//cout << endl << "sending election to " << backups_list[i].id;
 			com.send_int(backups_list[i].sockfd, this_backup.id);
-			cout << endl << "waiting for answer";
+			//cout << endl << "waiting for answer";
 			int id = receive_int(backups_list[i].sockfd, this_backup.id * 10);
 			received_ids.push_back(id);
-			cout << endl << "answer received: " << id;
+			//cout << endl << "answer received: " << id;
 		}
 
-		cout << endl << "looking for higher IDs";
+		//cout << endl << "looking for higher IDs";
 		// If any higher ID answered, then the highest one is the new main
 		leader_id = this_backup.id;
 		for(int i = 0; i < received_ids.size(); i++) {
 			leader = true;
-			cout << endl << endl << "checking ID: " << received_ids[i];
-			cout << endl << "against my ID: " << this_backup.id;
+			//cout << endl << endl << "checking ID: " << received_ids[i];
+			//cout << endl << "against my ID: " << this_backup.id;
 			if(received_ids[i] > leader_id) {
 				leader = false;
 				leader_id = received_ids[i];
@@ -556,11 +538,11 @@ packet* Backup::receive_header(int sockfd, int timeout_sec)
 	}
 	if(bytes_received != 0) // No need to copy anything to the header if no bytes were received
 	{
-		cout << endl << endl << "HEADER received!";
+		/*cout << endl << endl << "HEADER received!";
 		cout << endl << "type: " << header->type;
 		cout << endl << "seqn: " << header->seqn;
 		cout << endl << "total_size: " << header->total_size;
-		cout << endl << "payload_size: " << header->length << endl;
+		cout << endl << "payload_size: " << header->length << endl;*/
 	    memcpy(&header->type, &buffer[0], 2);
 	    memcpy(&header->seqn, &buffer[2], 2);
 	    memcpy(&header->total_size, &buffer[4], 4);
@@ -611,7 +593,7 @@ packet* Backup::receive_payload(int sockfd, int timeout_sec)
 
 void Backup::receive_file(int sockfd, string path)
 {
-	cout << endl << "receiving file to path: " << path.c_str();
+	//cout << endl << "receiving file to path: " << path.c_str();
     FILE *fp = fopen(path.c_str(), "w");
     if(fp==NULL)
         cout << "\nERROR OPENING " << path << endl;
@@ -621,14 +603,14 @@ void Backup::receive_file(int sockfd, string path)
     struct packet *pkt;
     pkt = receive_payload(sockfd, 30);
     uint32_t total_size = pkt->total_size;
-	cout << endl << endl << "packet received!";
+	/*cout << endl << endl << "packet received!";
 	cout << endl << "type: " << pkt->type;
 	cout << endl << "seqn: " << pkt->seqn;
 	cout << endl << "total_size: " << pkt->total_size;
-	cout << endl << "payload_size: " << pkt->length << endl;
+	cout << endl << "payload_size: " << pkt->length << endl;*/
 
     // Write the first payload to the file
-	cout << endl << "writing to " << path;
+//	cout << endl << "writing to " << path;
     ssize_t bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
     if (bytes_written_to_file < pkt->length)
         cout << "\nERROR WRITING TO " << path << endl;
@@ -641,13 +623,13 @@ void Backup::receive_file(int sockfd, string path)
     {
         // Receive payload
         receive_payload(sockfd, 30);
-		cout << endl << endl << "packet received!";
+/*		cout << endl << endl << "packet received!";
 		cout << endl << "type: " << pkt->type;
 		cout << endl << "seqn: " << pkt->seqn;
 		cout << endl << "total_size: " << pkt->total_size;
 		cout << endl << "payload_size: " << pkt->length << endl;
         // Write it to the file
-		cout << endl << "writing to " << path;
+		cout << endl << "writing to " << path;*/
         bytes_written_to_file = fwrite(pkt->_payload, sizeof(char), pkt->length, fp);
         if (bytes_written_to_file < pkt->length)
             cout << "\nERROR WRITING TO " << path << endl;

@@ -40,11 +40,11 @@ int main(int argc, char **argv)
 
 	// Link the signal_handler function to the sigInt signal. Once the user presses
 	//ctrl+c, the function will be called and close_server will be true
-	struct sigaction sigInt_handler;
+	/*struct sigaction sigInt_handler;
 	sigInt_handler.sa_handler = signal_handler;
 	sigemptyset(&sigInt_handler.sa_mask);
 	sigInt_handler.sa_flags = 0;
-	sigaction(SIGINT, &sigInt_handler, NULL);
+	sigaction(SIGINT, &sigInt_handler, NULL);*/
 	// Also, ignore sigpipe
     signal(SIGPIPE, SIG_IGN);
 
